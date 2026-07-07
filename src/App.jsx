@@ -1,20 +1,23 @@
-import { useState, useEffect } from 'react';
-import GithubWorkflowSandbox from './components/GithubWorkflowSandbox';
+import { useState, useEffect } from "react";
+import GithubWorkflowSandbox from "./components/GithubWorkflowSandbox";
 
 const SANDBOX_USER = {
-  uid: 'sandbox-001',
-  email: 'intern@granjur.com',
-  name: 'Sandbox User',
+  uid: "sandbox-001",
+  email: "intern@granjur.com",
+  name: "Sandbox User",
   photoURL: null,
 };
 
 export default function App() {
   const [dark, setDark] = useState(
-    () => window.matchMedia?.('(prefers-color-scheme: dark)').matches,
+    () => window.matchMedia?.("(prefers-color-scheme: dark)").matches,
   );
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    document.documentElement.setAttribute(
+      "data-theme",
+      dark ? "dark" : "light",
+    );
   }, [dark]);
 
   return (
@@ -32,7 +35,7 @@ export default function App() {
             onClick={() => setDark((d) => !d)}
             title="Toggle theme"
           >
-            {dark ? '☀️' : '🌙'}
+            {dark ? "🌙" : "☀️"}
           </button>
         </div>
       </header>
