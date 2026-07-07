@@ -1,26 +1,25 @@
 # GitHub Workflow Sandbox
 
-Standalone React app for intern evaluation. Runs entirely on mock data — no backend, API keys, or `.env` required.
+Standalone evaluation module — runs entirely on mock data with no backend, API keys, or `.env` file required.
 
 ## Setup
 
 ```bash
 npm install
-npm run dev
+npm start
 ```
 
-Opens at `http://localhost:5173`.
+Opens at `http://localhost:3000` and redirects to the sandbox page.
 
 ## What's inside
 
-- **Repo selector** — 4 mock repositories with search
-- **Issue list** — pre-seeded issues in all stages (awaiting bot, awaiting human, PR ready)
+- **Repo selector** — pick from 4 mock repositories
+- **Issue list** — pre-seeded issues in various stages (awaiting bot, awaiting human, PR ready)
 - **Issue creation** — full form with title, task, file explorer context, type, priority
-- **Comment threads** — expandable with bot markers
-- **Reply flow** — `!discuss` / `!continue` replies; simulated bot responds ~3s later
-- **Pull Requests** — open/closed/draft with changed file diffs, ping-to-merge
-- **Notifications** — bell + floating toast
-- **Dark/light theme** — toggle in header, respects system preference
+- **Comment thread** — expandable comments with bot/human markers
+- **Reply flow** — post `!discuss` / `!continue` replies; a simulated bot responds ~3s later
+- **Pull Requests** — open/closed/draft PRs with changed file diffs and ping-to-merge
+- **Notifications** — bell + floating toast when the mock bot replies
 
 All data lives in memory — nothing persists across refreshes.
 
@@ -28,10 +27,11 @@ All data lives in memory — nothing persists across refreshes.
 
 ```
 src/
-  components/
-    mockGithubData.js          ← mock API layer (edit to change seed data)
+  components/portal/
+    mockGithubData.js          ← mock API layer (edit this to change seed data)
     GithubWorkflowSandbox.jsx  ← the full UI component
-  App.jsx                      ← shell with theme toggle
-  main.jsx                     ← entry point
-  styles.css                   ← self-contained styles
+  pages/tools/
+    github-sandbox.jsx         ← page wrapper
+  css/
+    custom.css                 ← extracted styles
 ```
