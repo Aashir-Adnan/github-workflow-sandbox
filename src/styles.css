@@ -627,19 +627,19 @@ body {
   flex: 1;
   display: flex;
   min-height: 0;
+
+  height: calc(100vh - 130px);
 }
 
 .gh-sidebar {
   width: 220px;
-  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+
   background: var(--gh-surface);
   border-right: 1px solid var(--gh-border);
-  padding: var(--sp-4) var(--sp-3);
-  overflow-y: auto;
-  overflow-x: hidden;
-  /* CHANGED: width is now animated so the collapse toggle can smoothly
-     shrink the sidebar down to icon-only width. */
-  transition: width var(--dur-slow) var(--ease-in-out);
+
+  min-height: 0;
 }
 
 /* NEW: collapsed sidebar state — icon-only rail. Only width/visibility
@@ -661,6 +661,15 @@ body {
   padding: var(--sp-1) var(--sp-2) var(--sp-3);
   margin-bottom: var(--sp-2);
   border-bottom: 1px solid var(--gh-border);
+  flex-shrink: 0;
+}
+
+.gh-sidebar-explorer {
+  flex: 1;
+  min-height: 0;
+
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .gh-sidebar--collapsed .gh-sidebar-header {
