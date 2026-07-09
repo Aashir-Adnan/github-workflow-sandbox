@@ -9,27 +9,6 @@ const SANDBOX_USER = {
   photoURL: null,
 };
 
-function SandboxContent() {
-  return (
-    <>
-      <section className="portal-hero">
-        <div className="portal-hero-text">
-          <h2>GitHub Development Workflow</h2>
-          <p>
-            Browse repositories and dispatch agent tasks as GitHub issues. Signed in as{' '}
-            <strong>{SANDBOX_USER.name}</strong>.{' '}
-            <span style={{ opacity: 0.5, fontSize: '0.82rem' }}>(sandbox mode — no real API calls)</span>
-          </p>
-        </div>
-      </section>
-
-      <section className="portal-section">
-        <GithubWorkflowSandbox user={SANDBOX_USER} />
-      </section>
-    </>
-  );
-}
-
 export default function GithubSandboxPage() {
   return (
     <Layout
@@ -37,7 +16,7 @@ export default function GithubSandboxPage() {
       description="Sandbox version of the GitHub Development Workflow — no auth or env required"
     >
       <main className="portal-main-wrapper">
-        <SandboxContent />
+        <GithubWorkflowSandbox user={SANDBOX_USER} />
       </main>
     </Layout>
   );

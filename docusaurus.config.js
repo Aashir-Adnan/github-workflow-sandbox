@@ -32,9 +32,7 @@ const config = {
       colorMode: { respectPrefersColorScheme: true },
       navbar: {
         title: 'GH Workflow Sandbox',
-        items: [
-          { to: '/tools/github-sandbox', label: 'Sandbox', position: 'left' },
-        ],
+        items: [],
       },
       footer: {
         style: 'dark',

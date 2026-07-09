@@ -1,6 +1,6 @@
 import React from 'react';
-import { Redirect } from '@docusaurus/router';
+import RepositoryHome from '../components/portal/RepositoryHome';
 
 export default function Home() {
-  return <Redirect to="/tools/github-sandbox" />;
+  return <RepositoryHome />;
 }
