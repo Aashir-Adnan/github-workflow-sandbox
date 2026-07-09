@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 
-import pkg from "../../package.json";
-
 function IconGear({ size = 20 }) {
   return (
     <svg
@@ -83,11 +81,6 @@ export default function SettingsDropdown({ dark, setDark }) {
         </div>
 
         <div className="gh-settings-dropdown-divider" />
-
-        <div className="gh-settings-dropdown-section gh-settings-dropdown-version">
-          <span className="gh-settings-dropdown-label">Version</span>
-          <span className="gh-settings-dropdown-value">v{pkg.version}</span>
-        </div>
       </div>
     </div>
   );

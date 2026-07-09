@@ -3103,6 +3103,15 @@ body {
   font-weight: 500;
   color: var(--gh-text-secondary);
 }
+
+.navbar {
+  display: none !important;
+}
+
+.main-wrapper {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
 /* ═══════════════════════════════════════════════════════════
    Responsive fine-tuning
 ═══════════════════════════════════════════════════════════ */

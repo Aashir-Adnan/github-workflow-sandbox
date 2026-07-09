@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import GithubWorkflowSandbox from "./components/GithubWorkflowSandbox";
-import SettingsDropdown from "./components/SettingsDropdown";
+import React, { useState, useEffect } from "react";
+import Layout from "@theme/Layout";
+import GithubWorkflowSandbox from "@site/src/components/portal/GithubWorkflowSandbox";
+import SettingsDropdown from "@site/src/components/SettingsDropdown";
 
 const SANDBOX_USER = {
   uid: "sandbox-001",
@@ -9,7 +10,7 @@ const SANDBOX_USER = {
   photoURL: null,
 };
 
-export default function App() {
+function SandboxContent() {
   const [dark, setDark] = useState(
     () => window.matchMedia?.("(prefers-color-scheme: dark)").matches,
   );
@@ -20,12 +21,12 @@ export default function App() {
       dark ? "dark" : "light",
     );
   }, [dark]);
-
   return (
-    <div className="sandbox-shell">
+    <>
       <header className="sandbox-header">
         <div className="sandbox-logo">
           <span className="logo-icon">⚡</span>
+
           <div>
             <h2>GitHub Workflow</h2>
             <p>Agent Dashboard</p>
@@ -46,9 +47,24 @@ export default function App() {
         </div>
       </header>
 
-      <main className="sandbox-main">
+      <section className="portal-section">
         <GithubWorkflowSandbox user={SANDBOX_USER} />
+      </section>
+    </>
+  );
+}
+
+export default function GithubSandboxPage() {
+  return (
+    <Layout
+      title="GitHub Workflow Sandbox"
+      description="Sandbox version of the GitHub Development Workflow — no auth or env required"
+      noNavbar
+      noFooter
+    >
+      <main className="portal-main-wrapper">
+        <SandboxContent />
       </main>
-    </div>
+    </Layout>
   );
 }
