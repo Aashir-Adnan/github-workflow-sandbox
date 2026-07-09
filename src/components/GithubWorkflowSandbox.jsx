@@ -4,7 +4,7 @@ import React, {
   useCallback,
   useRef,
 } from 'react';
-import { mockFetchTrackedRepos, mockGhFetch } from './mockGithubData';
+import { mockGhFetch } from './mockGithubData';
 
 /* ─────────────────────────────────────────────
    GitHub API helpers (mock wrappers)
@@ -54,6 +54,25 @@ function getLastBotEmoji(comments) {
   return getBotMarker(last);
 }
 
+function extractPriority(body = '') {
+  const m = body.match(/Priority:\s*\n\s*([^\n]+)/);
+  return m ? m[1].trim() : null;
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} minute${mins !== 1 ? 's' : ''} ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs !== 1 ? 's' : ''} ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days} day${days !== 1 ? 's' : ''} ago`;
+  const months = Math.floor(days / 30);
+  return `${months} month${months !== 1 ? 's' : ''} ago`;
+}
+
 function buildIssueBody({ task, context, type, priority, email }) {
   const lines = ['[Agent Call]', '', 'Task:', task, ''];
   if (context && context.length > 0) {
@@ -90,14 +109,13 @@ function buildTree(flat) {
   };
   return sort(roots);
 }
-
-function TreeNode({ nodes, expanded, onToggle, onSelect, selected, depth }) {
+function TreeNode({ nodes, expanded, onToggle, onSelect, selected, depth, readOnly = false }) {
   return (
     <ul className="gh-tree-list" style={{ paddingLeft: depth === 0 ? 0 : '1.1rem' }}>
       {nodes.map((node) => {
         const isDir = node.type === 'tree';
         const isOpen = expanded.has(node.path);
-        const isSelected = selected.includes(node.path);
+        const isSelected = !readOnly && selected.includes(node.path);
         const name = node.path.split('/').pop();
         return (
           <li key={node.path} className="gh-tree-item">
@@ -112,7 +130,7 @@ function TreeNode({ nodes, expanded, onToggle, onSelect, selected, depth }) {
             </button>
             {isDir && isOpen && node.children.length > 0 && (
               <TreeNode nodes={node.children} expanded={expanded} onToggle={onToggle}
-                onSelect={onSelect} selected={selected} depth={depth + 1} />
+                onSelect={onSelect} selected={selected} depth={depth + 1} readOnly={readOnly} />
             )}
           </li>
         );
@@ -120,8 +138,7 @@ function TreeNode({ nodes, expanded, onToggle, onSelect, selected, depth }) {
     </ul>
   );
 }
-
-function FileExplorer({ owner, repo, onSelect, selected }) {
+export function FileExplorer({ owner, repo, onSelect, selected, readOnly = false }) {
   const [tree, setTree] = useState(null);
   const [expanded, setExpanded] = useState(new Set());
   const [loading, setLoading] = useState(false);
@@ -145,21 +162,21 @@ function FileExplorer({ owner, repo, onSelect, selected }) {
   }, []);
 
   const handleSelect = useCallback((path) => {
+    if (readOnly) return;
     onSelect((prev) => prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path]);
-  }, [onSelect]);
+  }, [onSelect, readOnly]);
 
   if (loading) return <div className="gh-explorer-loading">Loading tree…</div>;
   if (error) return <div className="gh-explorer-error">Error: {error}</div>;
   if (!tree) return null;
 
   return (
-    <div className="gh-explorer">
+    <div className={`gh-explorer${readOnly ? ' gh-explorer--readonly' : ''}`}>
       <TreeNode nodes={buildTree(tree)} expanded={expanded} onToggle={toggle}
-        onSelect={handleSelect} selected={selected} depth={0} />
+        onSelect={handleSelect} selected={selected || []} depth={0} readOnly={readOnly} />
     </div>
   );
 }
-
 /* ─────────────────────────────────────────────
    Issue Form
 ───────────────────────────────────────────── */
@@ -347,10 +364,23 @@ function IssueRow({ issue, comments, repo, currentUserEmail, onRefresh }) {
   const stage = issue.state === 'closed' ? 'done' : getIssueStage(comments);
   const isDone = stage === 'done';
   const awaitingHuman = stage === 'human';
+  const isClosed = issue.state === 'closed';
   const myIssue = extractEmail(issue.body || '')?.toLowerCase() === (currentUserEmail || '').toLowerCase();
   const prUrl = isDone ? extractPrUrl(comments) : null;
+  const priority = extractPriority(issue.body || '');
+  const lastActivityDate = comments.length > 0 ? comments[comments.length - 1].created_at : issue.created_at;
 
-  const stageLabel = isDone ? 'PR Ready' : awaitingHuman ? 'Awaiting Your Response' : 'Awaiting Bot Response';
+  // Overall lifecycle status (what the issue is in, right now)
+  const statusLabel = isClosed ? 'Closed' : isDone ? 'PR Ready' : awaitingHuman ? 'Waiting for User' : 'Open';
+  const statusKey = isClosed ? 'closed' : isDone ? 'done' : awaitingHuman ? 'human' : 'bot';
+
+  // What the AI agent specifically is doing (only relevant while it's "in play")
+  let aiLabel = null;
+  if (!isClosed && !isDone && stage === 'bot') {
+    aiLabel = comments.length === 0 ? 'AI Assigned' : 'AI Working';
+  }
+
+  const stageLabel = statusLabel; // kept for compatibility with any external reference
   const rowClass = [
     'gh-issue-row',
     isDone ? ' gh-issue-row--done' : '',
@@ -364,20 +394,29 @@ function IssueRow({ issue, comments, repo, currentUserEmail, onRefresh }) {
     <div className={rowClass}>
       <button type="button" className="gh-issue-row-header" onClick={() => setOpen((v) => !v)}>
         <span className={lightClass} />
-        <span className="gh-status-number">#{issue.number}</span>
-        <span className="gh-status-title">{issue.title.replace(/^\[Agent Call\]\s*/, '')}</span>
-        <div className="gh-status-meta">
-          {myIssue && <span className="gh-status-badge gh-status-badge--mine">mine</span>}
-          <span className={`gh-stage-badge gh-stage-badge--${stage}`}>{stageLabel}</span>
-          {prUrl && (
-            <a href={prUrl} target="_blank" rel="noopener noreferrer"
-              className="gh-pr-badge" onClick={(e) => e.stopPropagation()}>
-              ⎇ View PR ↗
-            </a>
-          )}
-          {comments.length > 0 && <span className="gh-status-comments">💬 {comments.length}</span>}
-          <span className={`gh-chevron${open ? ' open' : ''}`}>▸</span>
+        <div className="gh-issue-row-main">
+          <div className="gh-issue-row-titleline">
+            <span className="gh-status-number">#{issue.number}</span>
+            <span className="gh-status-title">{issue.title.replace(/^\[Agent Call\]\s*/, '')}</span>
+          </div>
+          <div className="gh-issue-row-badges">
+            {myIssue && <span className="gh-status-badge gh-status-badge--mine">mine</span>}
+            <span className={`gh-stage-badge gh-stage-badge--${statusKey}`}>{statusLabel}</span>
+            {aiLabel && <span className="gh-ai-badge">🤖 {aiLabel}</span>}
+            {priority && <span className={`gh-priority-badge gh-priority-badge--${priority.toLowerCase()}`}>{priority}</span>}
+            {prUrl && (
+              <a href={prUrl} target="_blank" rel="noopener noreferrer"
+                className="gh-pr-badge" onClick={(e) => e.stopPropagation()}>
+                ⎇ View PR ↗
+              </a>
+            )}
+          </div>
+          <div className="gh-issue-row-subline">
+            <span className="gh-issue-last-activity">Last Updated • {timeAgo(lastActivityDate)}</span>
+            {comments.length > 0 && <span className="gh-status-comments">💬 {comments.length}</span>}
+          </div>
         </div>
+        <span className={`gh-chevron${open ? ' open' : ''}`}>▸</span>
       </button>
 
       <div className={`gh-issue-detail${open ? ' gh-issue-detail--open' : ''}`}>
@@ -442,14 +481,51 @@ function IssueRow({ issue, comments, repo, currentUserEmail, onRefresh }) {
   );
 }
 
+const ISSUE_FILTER_CHIPS = [
+  { id: 'all', label: 'All' },
+  { id: 'mine', label: 'Mine' },
+  { id: 'ai', label: 'AI Working' },
+  { id: 'waiting', label: 'Waiting for Me' },
+  { id: 'pr', label: 'PR Ready' },
+  { id: 'closed', label: 'Closed' },
+];
+
+const ISSUE_SORT_OPTIONS = [
+  { id: 'updated', label: 'Recently Updated' },
+  { id: 'newest', label: 'Newest' },
+  { id: 'oldest', label: 'Oldest' },
+  { id: 'priority', label: 'Priority' },
+];
+
+const PRIORITY_RANK = { Immediate: 0, High: 1, Normal: 2, Low: 3 };
+
+function IssueCardSkeleton() {
+  return (
+    <div className="gh-issue-skeleton">
+      <div className="gh-skeleton-light" />
+      <div className="gh-skeleton-body">
+        <div className="gh-skeleton-line gh-skeleton-line--title" />
+        <div className="gh-skeleton-row">
+          <div className="gh-skeleton-chip" />
+          <div className="gh-skeleton-chip" />
+          <div className="gh-skeleton-chip" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─────────────────────────────────────────────
    Issues Panel
 ───────────────────────────────────────────── */
 
-function IssuesPanel({ repo, currentUserEmail, onNewNotification, refreshTick, onRefresh }) {
+function IssuesPanel({ repo, currentUserEmail, onNewNotification, refreshTick, onRefresh, onCreateIssue }) {
   const [issues, setIssues] = useState([]);
   const [commentMap, setCommentMap] = useState({});
   const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('updated');
   const prevCommentCounts = useRef({});
 
   const fetchIssues = useCallback(async () => {
@@ -501,15 +577,141 @@ function IssuesPanel({ repo, currentUserEmail, onNewNotification, refreshTick, o
     }
   }, [commentMap, issues, currentUserEmail, onNewNotification]);
 
-  if (loading && issues.length === 0) return <div className="gh-status-loading">Loading issues…</div>;
-  if (issues.length === 0) return <div className="gh-status-empty">No open agent issues in this repository.</div>;
+  // Pure UI-layer derivation — does not touch fetch/notification logic above.
+  const enriched = issues.map((issue) => {
+    const comments = commentMap[issue.number] || [];
+    const isClosed = issue.state === 'closed';
+    const stage = isClosed ? 'done' : getIssueStage(comments);
+    const myIssue = extractEmail(issue.body || '')?.toLowerCase() === (currentUserEmail || '').toLowerCase();
+    const priority = extractPriority(issue.body || '');
+    const lastActivityDate = comments.length > 0 ? comments[comments.length - 1].created_at : issue.created_at;
+    return { issue, comments, isClosed, stage, myIssue, priority, lastActivityDate };
+  });
+
+  const stats = {
+    open: enriched.filter((e) => !e.isClosed).length,
+    aiWorking: enriched.filter((e) => !e.isClosed && e.stage === 'bot').length,
+    prReady: enriched.filter((e) => !e.isClosed && e.stage === 'done').length,
+    closed: enriched.filter((e) => e.isClosed).length,
+  };
+
+  const q = search.trim().toLowerCase();
+  const filtered = enriched.filter(({ issue, isClosed, stage, myIssue }) => {
+    if (q && !issue.title.toLowerCase().includes(q) && !String(issue.number).includes(q)) return false;
+    switch (activeFilter) {
+      case 'mine': return myIssue;
+      case 'ai': return !isClosed && stage === 'bot';
+      case 'waiting': return !isClosed && stage === 'human';
+      case 'pr': return !isClosed && stage === 'done';
+      case 'closed': return isClosed;
+      default: return true;
+    }
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    switch (sortBy) {
+      case 'newest': return new Date(b.issue.created_at) - new Date(a.issue.created_at);
+      case 'oldest': return new Date(a.issue.created_at) - new Date(b.issue.created_at);
+      case 'priority': return (PRIORITY_RANK[a.priority] ?? 99) - (PRIORITY_RANK[b.priority] ?? 99);
+      case 'updated':
+      default: return new Date(b.lastActivityDate) - new Date(a.lastActivityDate);
+    }
+  });
+
+  if (loading && issues.length === 0) {
+    return (
+      <div className="gh-issues-panel-body">
+        <div className="gh-issues-list">
+          {[1, 2, 3].map((i) => <IssueCardSkeleton key={i} />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (issues.length === 0) {
+    return (
+      <div className="gh-empty-state">
+        <div className="gh-empty-state-icon">🗂️</div>
+        <h4 className="gh-empty-state-title">No Issues Yet</h4>
+        <p className="gh-empty-state-desc">Create your first issue to let the AI start working.</p>
+        {onCreateIssue && (
+          <button type="button" className="gh-new-issue-btn" onClick={onCreateIssue}>
+            <span className="gh-new-issue-icon">+</span> Create Issue
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div className="gh-issues-list">
-      {issues.map((issue) => (
-        <IssueRow key={issue.number} issue={issue} comments={commentMap[issue.number] || []}
-          repo={repo} currentUserEmail={currentUserEmail} onRefresh={onRefresh} />
-      ))}
+    <div className="gh-issues-panel-body">
+      <div className="gh-issues-stats">
+        <div className="gh-stat-card">
+          <span className="gh-stat-value">{stats.open}</span>
+          <span className="gh-stat-label">Open Issues</span>
+        </div>
+        <div className="gh-stat-card gh-stat-card--ai">
+          <span className="gh-stat-value">{stats.aiWorking}</span>
+          <span className="gh-stat-label">AI Working</span>
+        </div>
+        <div className="gh-stat-card gh-stat-card--pr">
+          <span className="gh-stat-value">{stats.prReady}</span>
+          <span className="gh-stat-label">PR Ready</span>
+        </div>
+        <div className="gh-stat-card gh-stat-card--closed">
+          <span className="gh-stat-value">{stats.closed}</span>
+          <span className="gh-stat-label">Closed</span>
+        </div>
+      </div>
+
+      <div className="gh-issues-toolbar">
+        <div className="gh-issues-search-wrap">
+          <span className="gh-issues-search-icon">🔍</span>
+          <input
+            className="gh-issues-search"
+            placeholder="Search issues by title or number…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="gh-sort-wrap">
+          <label className="gh-sort-label" htmlFor="gh-sort-select">Sort</label>
+          <select
+            id="gh-sort-select"
+            className="gh-sort-select"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            {ISSUE_SORT_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="gh-filter-chips">
+        {ISSUE_FILTER_CHIPS.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            className={`gh-filter-chip${activeFilter === c.id ? ' gh-filter-chip--active' : ''}`}
+            onClick={() => setActiveFilter(c.id)}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {sorted.length === 0 ? (
+        <div className="gh-empty-state gh-empty-state--muted">
+          <p className="gh-empty-state-desc">No issues match your search or filter.</p>
+        </div>
+      ) : (
+        <div className="gh-issues-list">
+          {sorted.map(({ issue }) => (
+            <IssueRow key={issue.number} issue={issue} comments={commentMap[issue.number] || []}
+              repo={repo} currentUserEmail={currentUserEmail} onRefresh={onRefresh} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -787,6 +989,12 @@ function PRsPanel({ repo, user }) {
 /* ─────────────────────────────────────────────
    Notification Bell (top-bar)
 ───────────────────────────────────────────── */
+const NOTIF_ICONS = {
+  reply_needed: '🤖',
+  pr_ready: '✅',
+  tests_passed: '✔️',
+  comment: '💬',
+};
 
 function NotificationBell({ notifications, onDismiss, onDismissAll }) {
   const [open, setOpen] = useState(false);
@@ -823,83 +1031,29 @@ function NotificationBell({ notifications, onDismiss, onDismissAll }) {
           {count > 0 && <button type="button" className="gh-notif-clear-all" onClick={onDismissAll}>Clear all</button>}
         </div>
         {count === 0 ? (
-          <p className="gh-notif-empty">No new notifications</p>
+          <div className="gh-notif-empty-state">
+            <span className="gh-notif-empty-icon">🎉</span>
+            <p className="gh-notif-empty">You're all caught up!</p>
+          </div>
         ) : (
           <ul className="gh-notif-list">
             {notifications.map((n) => (
               <li key={n.id} className="gh-notif-item">
-                <div className="gh-notif-item-top">
-                  <span className="gh-notif-link">{n.issueTitle}</span>
-                  <button type="button" className="gh-notif-dismiss" onClick={() => onDismiss(n.id)}>×</button>
+                <span className="gh-notif-icon">{NOTIF_ICONS[n.type] || NOTIF_ICONS.comment}</span>
+                <div className="gh-notif-item-body">
+                  <div className="gh-notif-item-top">
+                    <span className="gh-notif-link">{n.issueTitle}</span>
+                    <button type="button" className="gh-notif-dismiss" onClick={() => onDismiss(n.id)}>×</button>
+                  </div>
+                  <p className="gh-notif-meta"><strong>{n.commenter}</strong> commented · {n.repoLabel}#{n.issueNumber}</p>
+                  {n.preview && <p className="gh-notif-preview">"{n.preview}"</p>}
+                  <span className="gh-notif-time">{timeAgo(n.ts)}</span>
                 </div>
-                <p className="gh-notif-meta"><strong>{n.commenter}</strong> commented · {n.repoLabel}#{n.issueNumber}</p>
-                {n.preview && <p className="gh-notif-preview">"{n.preview}"</p>}
               </li>
             ))}
           </ul>
         )}
       </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   Floating Notification Toast (bottom-right)
-───────────────────────────────────────────── */
-
-function NotificationToast({ notifications, onDismiss, onDismissAll }) {
-  const [open, setOpen] = useState(false);
-  const [wiggle, setWiggle] = useState(false);
-  const count = notifications.length;
-  const prevCount = useRef(count);
-
-  useEffect(() => {
-    if (count > prevCount.current) {
-      setWiggle(true);
-      setTimeout(() => setWiggle(false), 800);
-    }
-    prevCount.current = count;
-  }, [count]);
-
-  useEffect(() => {
-    if (count === 0) return;
-    const id = setInterval(() => {
-      setWiggle(true);
-      setTimeout(() => setWiggle(false), 800);
-    }, 60_000);
-    return () => clearInterval(id);
-  }, [count]);
-
-  if (count === 0 && !open) return null;
-
-  return (
-    <div className="gh-toast-wrap">
-      <div className={`gh-toast-panel${open ? ' gh-toast-panel--open' : ''}`}>
-        <div className="gh-notif-dropdown-header">
-          <span>Notifications</span>
-          {count > 0 && <button type="button" className="gh-notif-clear-all" onClick={onDismissAll}>Clear all</button>}
-        </div>
-        {count === 0 ? (
-          <p className="gh-notif-empty">No new notifications</p>
-        ) : (
-          <ul className="gh-notif-list">
-            {notifications.map((n) => (
-              <li key={n.id} className="gh-notif-item">
-                <div className="gh-notif-item-top">
-                  <span className="gh-notif-link">{n.issueTitle}</span>
-                  <button type="button" className="gh-notif-dismiss" onClick={() => onDismiss(n.id)}>×</button>
-                </div>
-                <p className="gh-notif-meta"><strong>{n.commenter}</strong> · {n.repoLabel}#{n.issueNumber}</p>
-                {n.preview && <p className="gh-notif-preview">"{n.preview}"</p>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-      <button type="button" className={`gh-toast-btn${wiggle ? ' gh-notif-bell--wiggle' : ''}`}
-        onClick={() => setOpen((v) => !v)}>
-        🔔 {count > 0 && <span className="gh-notif-count gh-notif-count--toast">{count}</span>}
-      </button>
     </div>
   );
 }
@@ -911,7 +1065,6 @@ function NotificationToast({ notifications, onDismiss, onDismissAll }) {
 const WORKSPACE_TABS = [
   { id: 'issues', label: 'Issues' },
   { id: 'prs', label: 'Pull Requests' },
-  { id: 'create', label: '+ New Issue' },
 ];
 
 function RepoWorkspace({ repo, user, notifications, onNewNotification, onBack, onDismiss, onDismissAll }) {
@@ -943,6 +1096,8 @@ function RepoWorkspace({ repo, user, notifications, onNewNotification, onBack, o
   }, []);
 
   useEffect(() => {
+    const isViewTab = WORKSPACE_TABS.some((t) => t.id === tab);
+    if (!isViewTab) { setGhTabIndicator(null); return; }
     const el = ghTabRefs.current[tab];
     if (el) setGhTabIndicator({ left: el.offsetLeft, width: el.offsetWidth });
   }, [tab]);
@@ -969,15 +1124,14 @@ function RepoWorkspace({ repo, user, notifications, onNewNotification, onBack, o
   return (
     <div className={`gh-workspace${entering ? ' gh-workspace--entering' : ''}`}>
       <div className="gh-workspace-header">
-        <div className="gh-workspace-header-left">
-          <button type="button" className="gh-back-btn" onClick={onBack}>← Repos</button>
-          <span className="gh-workspace-repo-label">
-            <span className="gh-workspace-repo-icon">📦</span>
-            {repo.owner}/{repo.repo}
-          </span>
+       <div className="gh-workspace-header-left">
+          <nav className="gh-breadcrumb" aria-label="Breadcrumb">
+            <button type="button" className="gh-breadcrumb-link" onClick={onBack}>Repositories</button>
+            <span className="gh-breadcrumb-sep">/</span>
+            <span className="gh-breadcrumb-current" aria-current="page">{repo.owner}/{repo.repo}</span>
+          </nav>
         </div>
         <div className="gh-workspace-header-right">
-          <NotificationBell notifications={notifications} onDismiss={onDismiss} onDismissAll={onDismissAll} />
           <div className="gh-view-tabs">
             {ghTabIndicator && <div className="gh-view-tab-indicator" style={{ left: ghTabIndicator.left, width: ghTabIndicator.width }} />}
             {WORKSPACE_TABS.map((t) => (
@@ -989,71 +1143,88 @@ function RepoWorkspace({ repo, user, notifications, onNewNotification, onBack, o
               </button>
             ))}
           </div>
+          <NotificationBell notifications={notifications} onDismiss={onDismiss} onDismissAll={onDismissAll} />
         </div>
       </div>
 
       <div className="gh-workspace-body">
-        <aside className="gh-sidebar">
-          <div className="gh-sidebar-title">Files</div>
-          <div className="gh-sidebar-explorer">
-            <FileExplorer owner={repo.owner} repo={repo.repo} onSelect={() => {}} selected={[]} />
-          </div>
-        </aside>
+  <main className="gh-workspace-main">
+    <div className={`gh-tab-panel${tabFading ? ' gh-tab-panel--fading' : ''}`}>
 
-        <main className="gh-workspace-main">
-          <div className={`gh-tab-panel${tabFading ? ' gh-tab-panel--fading' : ''}`}>
-            {displayTab === 'issues' && (
-              <>
-                <div className="gh-panel-header">
-                  <h3 className="gh-panel-title">Open Agent Issues</h3>
-                  <button type="button" className="gh-refresh-btn" onClick={() => setRefreshTick((t) => t + 1)} title="Refresh">↻</button>
-                </div>
-                <IssuesPanel repo={repo} currentUserEmail={user?.email || ''}
-                  onNewNotification={onNewNotification} refreshTick={refreshTick}
-                  onRefresh={() => setRefreshTick((t) => t + 1)} />
-              </>
-            )}
-            {displayTab === 'prs' && (
-              <>
-                <div className="gh-panel-header">
-                  <h3 className="gh-panel-title">Pull Requests</h3>
-                </div>
-                <PRsPanel repo={repo} user={user} />
-              </>
-            )}
-            {displayTab === 'create' && (
-              <>
-                <div className="gh-panel-header">
-                  <h3 className="gh-panel-title">New Agent Issue</h3>
-                </div>
-                <IssueForm repo={repo} onCreated={handleIssueCreated} userEmail={user?.email || ''} />
-              </>
-            )}
-          </div>
-        </main>
-      </div>
+      {displayTab === 'issues' && (
+        <>
+          <div className="gh-panel-header">
+            <h3 className="gh-panel-title">Open Agent Issues</h3>
 
-      <NotificationToast notifications={notifications} onDismiss={onDismiss} onDismissAll={onDismissAll} />
+            <button
+              type="button"
+              className="gh-refresh-btn"
+              onClick={() => setRefreshTick((t) => t + 1)}
+            >
+              ↻
+            </button>
+          </div>
+
+          <IssuesPanel
+            repo={repo}
+            currentUserEmail={user?.email || ""}
+            onNewNotification={onNewNotification}
+            refreshTick={refreshTick}
+            onRefresh={() => setRefreshTick((t) => t + 1)}
+            onCreateIssue={() => handleTabChange("create")}
+          />
+        </>
+      )}
+
+      {displayTab === "prs" && (
+        <>
+          <div className="gh-panel-header">
+            <h3 className="gh-panel-title">Pull Requests</h3>
+          </div>
+
+          <PRsPanel
+            repo={repo}
+            user={user}
+          />
+        </>
+      )}
+
+      {displayTab === "create" && (
+        <>
+          <div className="gh-panel-header">
+            <h3 className="gh-panel-title">New Agent Issue</h3>
+          </div>
+
+          <IssueForm
+            repo={repo}
+            onCreated={handleIssueCreated}
+            userEmail={user?.email || ""}
+          />
+        </>
+      )}
+
     </div>
-  );
+  </main>
+</div>
+     {tab === "issues" && (
+  <button
+    type="button"
+    className="gh-fab-new-issue"
+    onClick={() => handleTabChange("create")}
+  >
+    +
+  </button>
+)}
+</div>
+);
 }
 
 /* ─────────────────────────────────────────────
    Repo Selector
 ───────────────────────────────────────────── */
 
-function RepoSelector({ onSelect }) {
+function RepoSelector({ repos, loading, error, onSelect }) {
   const [search, setSearch] = useState('');
-  const [repos, setRepos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    mockFetchTrackedRepos()
-      .then(setRepos)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, []);
 
   const filtered = repos.filter((r) =>
     r.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -1062,6 +1233,9 @@ function RepoSelector({ onSelect }) {
 
   return (
     <div className="gh-selector">
+      <div className="gh-selector-heading-row">
+        <h2 className="gh-selector-heading">My Repositories</h2>
+      </div>
       <div className="gh-selector-search-wrap">
         <span className="gh-selector-search-icon">🔍</span>
         <input className="gh-selector-search" placeholder="Search repositories…"
@@ -1072,16 +1246,12 @@ function RepoSelector({ onSelect }) {
       <div className="gh-repo-grid">
         {filtered.map((r) => (
           <button key={r.slug} type="button" className="gh-repo-card" onClick={() => onSelect(r)}>
-            <div className="gh-repo-card-face">
-              <div className="gh-repo-card-icon">📦</div>
-              <div className="gh-repo-card-body">
-                <strong className="gh-repo-card-name">{r.name}</strong>
-                <span className="gh-repo-handle">{r.owner}/{r.repo}</span>
-              </div>
+            <div className="gh-repo-card-icon">📦</div>
+            <div className="gh-repo-card-body">
+              <strong className="gh-repo-card-name">{r.name}</strong>
+              <span className="gh-repo-handle">{r.owner}/{r.repo}</span>
             </div>
-            <div className="gh-repo-card-desc-layer">
-              <span className="gh-repo-desc">{r.owner}/{r.repo}</span>
-            </div>
+            <span className="gh-repo-card-arrow">→</span>
           </button>
         ))}
         {!loading && filtered.length === 0 && repos.length > 0 && (
@@ -1096,8 +1266,15 @@ function RepoSelector({ onSelect }) {
    Root
 ───────────────────────────────────────────── */
 
-export default function GithubWorkflowSandbox({ user }) {
-  const [selectedRepo, setSelectedRepo] = useState(null);
+export default function GithubWorkflowSandbox({
+  user,
+  repos,
+  reposLoading,
+  reposError,
+  selectedRepo,
+  onSelectRepo,
+  onBack,
+}) {
   const [notifications, setNotifications] = useState([]);
 
   const addNotification = useCallback((n) => {
@@ -1107,7 +1284,14 @@ export default function GithubWorkflowSandbox({ user }) {
   const dismissAll = useCallback(() => setNotifications([]), []);
 
   if (!selectedRepo) {
-    return <RepoSelector onSelect={setSelectedRepo} />;
+    return (
+      <RepoSelector
+        repos={repos}
+        loading={reposLoading}
+        error={reposError}
+        onSelect={onSelectRepo}
+      />
+    );
   }
 
   return (
@@ -1116,7 +1300,7 @@ export default function GithubWorkflowSandbox({ user }) {
       user={user}
       notifications={notifications}
       onNewNotification={addNotification}
-      onBack={() => setSelectedRepo(null)}
+      onBack={onBack}
       onDismiss={dismissNotification}
       onDismissAll={dismissAll}
     />
