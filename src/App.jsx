@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import GithubWorkflowSandbox from "./components/GithubWorkflowSandbox";
+import SettingsDropdown from "./components/SettingsDropdown";
 
 const SANDBOX_USER = {
   uid: "sandbox-001",
@@ -41,12 +42,7 @@ export default function App() {
             </div>
           </div>
 
-          <button
-            className="sandbox-theme-toggle"
-            onClick={() => setDark((d) => !d)}
-          >
-            {dark ? "☀️" : "🌙"}
-          </button>
+          <SettingsDropdown dark={dark} setDark={setDark} />
         </div>
       </header>
 

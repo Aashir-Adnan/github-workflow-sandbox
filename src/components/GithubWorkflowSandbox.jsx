@@ -14,6 +14,87 @@ function extractEmail(body = "") {
   return m ? m[1] : null;
 }
 
+/* NEW (UI-only helper): pulls the "Priority:" value out of an issue body,
+   the same way extractEmail() already pulls "NotifyEmail:". Used to render
+   the metadata row on each issue card — no existing parsing is touched. */
+function extractPriority(body = "") {
+  const m = body.match(/Priority:\s*([^\r\n]+)/);
+  return m ? m[1].trim() : null;
+}
+
+/* NEW (UI-only helper): pulls the "Type:" value out of an issue body,
+   mirroring extractEmail()/extractPriority() above. */
+function extractIssueType(body = "") {
+  const m = body.match(/Type:\s*([^\r\n]+)/);
+  return m ? m[1].trim() : null;
+}
+
+/* NEW (UI-only lookup): maps the raw agent "Type" value from the issue body
+   to the friendlier label requested for the metadata row. Falls back to the
+   raw value itself so nothing is ever hardcoded/invented if a new Type is
+   introduced later. */
+const ISSUE_TYPE_LABELS = {
+  "Code Writer": "Development",
+  "Code Reviewer": "Review",
+  "Code Suggester": "Suggestion",
+};
+
+/* NEW (UI-only lookup): purely decorative emoji per priority value, used
+   only for the metadata row. Falls back to a neutral dot for any priority
+   text not in this list, so no value is ever fabricated. */
+const PRIORITY_EMOJI = {
+  Immediate: "🔴",
+  High: "🟠",
+  Normal: "🟡",
+  Low: "🟢",
+};
+
+/* NEW (UI-only helper): pulls the "Task:" section out of an issue body —
+   same field buildIssueBody() writes. Matches from the "Task:" label up to
+   the next blank line (the same "label, then blank-line-terminated block"
+   shape every field in buildIssueBody() already follows). */
+function extractTask(body = "") {
+  const m = body.match(/Task:\s*\r?\n([\s\S]*?)(?:\r?\n\r?\n|$)/);
+  return m ? m[1].trim() : null;
+}
+
+/* NEW (UI-only helper): pulls the "Context:" section out of an issue body
+   and splits it into the individual file paths buildIssueBody() joined
+   with ", " when the issue was created. Returns [] (not fabricated data)
+   when no Context section exists. */
+function extractContext(body = "") {
+  const m = body.match(/Context:\s*\r?\n([\s\S]*?)(?:\r?\n\r?\n|$)/);
+  if (!m) return [];
+  return m[1]
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/* NEW (UI-only helper): turns an ISO created_at timestamp into a relative
+   "x ago" string, computed dynamically at render time from the real
+   created_at value — nothing here is hardcoded. */
+function formatRelativeTime(dateString) {
+  const createdMs = new Date(dateString).getTime();
+  if (Number.isNaN(createdMs)) return "";
+  const diffMs = Math.max(0, Date.now() - createdMs);
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diffMs < minute) return "just now";
+  if (diffMs < hour) {
+    const mins = Math.round(diffMs / minute);
+    return `${mins} minute${mins !== 1 ? "s" : ""} ago`;
+  }
+  if (diffMs < day) {
+    const hrs = Math.round(diffMs / hour);
+    return `${hrs} hour${hrs !== 1 ? "s" : ""} ago`;
+  }
+  const days = Math.round(diffMs / day);
+  return `${days} day${days !== 1 ? "s" : ""} ago`;
+}
+
 function getBotMarker(comment) {
   const body = comment?.body || "";
   const markerMatch = body.match(/(?:^|\n)\s*(🤖|⚠️|✅)\b/m);
@@ -292,6 +373,18 @@ function TreeNode({ nodes, expanded, onToggle, onSelect, selected, depth }) {
                 isDir ? onToggle(node.path) : onSelect(node.path)
               }
             >
+              {/* NEW: fixed-width chevron slot keeps file rows aligned with
+                  folder rows (files render an empty slot so icons stay
+                  in the same column). Chevron rotates 90deg on expand. */}
+              <span className="gh-tree-chevron-slot">
+                {isDir && (
+                  <span
+                    className={`gh-tree-chevron${isOpen ? " gh-tree-chevron--open" : ""}`}
+                  >
+                    <IconChevronRight size={12} />
+                  </span>
+                )}
+              </span>
               <span className="gh-tree-icon">
                 {isDir ? (
                   isOpen ? (
@@ -390,6 +483,40 @@ function FileExplorer({ owner, repo, onSelect, selected }) {
 }
 
 /* ─────────────────────────────────────────────
+   Repository Info Card (NEW)
+   Compact, reusable "Repository / Owner / Branch" summary built purely
+   from the repo object already passed down from RepoSelector/REPOS —
+   no new fields, no fetches, no fabricated data.
+───────────────────────────────────────────── */
+
+function RepoInfoCard({ repo, showOwner = true }) {
+  return (
+    <div className="gh-repo-info-card">
+      <div className="gh-repo-info-item">
+        <span className="gh-repo-info-label">Repository</span>
+        <span className="gh-repo-info-value">
+          {repo.owner} / {repo.repo}
+        </span>
+      </div>
+      {showOwner && (
+        <div className="gh-repo-info-item">
+          <span className="gh-repo-info-label">Owner</span>
+          <span className="gh-repo-info-value">{repo.owner}</span>
+        </div>
+      )}
+      {repo.branch && (
+        <div className="gh-repo-info-item">
+          <span className="gh-repo-info-label">Branch</span>
+          <span className="gh-repo-info-value gh-repo-info-value--branch">
+            <IconGitBranch size={12} /> {repo.branch}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    Issue Form
 ───────────────────────────────────────────── */
 
@@ -442,6 +569,33 @@ function IssueForm({ repo, onCreated, userEmail }) {
 
   return (
     <form className="gh-issue-form" onSubmit={handleSubmit}>
+      {/* NEW: read-only context card — Repository / Branch (+ Notify Email
+          when one is already configured for this workflow), all sourced
+          from the existing repo/userEmail props. Purely informational;
+          does not affect submission or the request payload. */}
+      <div className="gh-repo-info-card gh-repo-info-card--form">
+        <div className="gh-repo-info-item">
+          <span className="gh-repo-info-label">Repository</span>
+          <span className="gh-repo-info-value">
+            {repo.owner} / {repo.repo}
+          </span>
+        </div>
+        {repo.branch && (
+          <div className="gh-repo-info-item">
+            <span className="gh-repo-info-label">Branch</span>
+            <span className="gh-repo-info-value gh-repo-info-value--branch">
+              <IconGitBranch size={12} /> {repo.branch}
+            </span>
+          </div>
+        )}
+        {userEmail && (
+          <div className="gh-repo-info-item">
+            <span className="gh-repo-info-label">Notify Email</span>
+            <span className="gh-repo-info-value">{userEmail}</span>
+          </div>
+        )}
+      </div>
+
       <div className="gh-form-field">
         <label className="gh-form-label">
           Brief title <span className="gh-form-required">*</span>
@@ -688,6 +842,124 @@ function ReplyBox({ repo, issue, comments, onReplied }) {
 }
 
 /* ─────────────────────────────────────────────
+   Issue Info Section (NEW)
+   Status / Created by / Created (relative) / Notify — all read directly
+   off the existing issue object (state, user, created_at, body). Any
+   field that isn't available is simply skipped, nothing is invented.
+───────────────────────────────────────────── */
+
+function IssueInfoSection({ issue }) {
+  const notifyEmail = extractEmail(issue.body || "");
+  const createdRelative = formatRelativeTime(issue.created_at);
+
+  return (
+    <div className="gh-issue-info-section">
+      <div className="gh-issue-info-item">
+        <span className="gh-issue-info-label">Status</span>
+        <span
+          className={`gh-issue-info-value gh-issue-info-status gh-issue-info-status--${issue.state}`}
+        >
+          {issue.state === "closed" ? "Closed" : "Open"}
+        </span>
+      </div>
+      {issue.user?.login && (
+        <div className="gh-issue-info-item">
+          <span className="gh-issue-info-label">Created by</span>
+          <span className="gh-issue-info-value">
+            <IconUser size={12} /> {issue.user.login}
+          </span>
+        </div>
+      )}
+      {createdRelative && (
+        <div className="gh-issue-info-item">
+          <span className="gh-issue-info-label">Created</span>
+          <span className="gh-issue-info-value">{createdRelative}</span>
+        </div>
+      )}
+      {notifyEmail && (
+        <div className="gh-issue-info-item">
+          <span className="gh-issue-info-label">Notify</span>
+          <span className="gh-issue-info-value">{notifyEmail}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Issue Body Fields (NEW)
+   Replaces the raw <pre>{issue.body}</pre> dump with a parsed, labeled
+   layout (Task / Affected Files / Type / Priority / Notify Email), all
+   extracted from the same issue.body string buildIssueBody() already
+   writes. If nothing recognizable can be parsed (e.g. a body that
+   doesn't follow the agent-call format), the raw text is still shown
+   as a fallback so no information is ever lost.
+───────────────────────────────────────────── */
+
+function IssueBodyFields({ body }) {
+  const task = extractTask(body || "");
+  const files = extractContext(body || "");
+  const type = extractIssueType(body || "");
+  const priority = extractPriority(body || "");
+  const email = extractEmail(body || "");
+
+  const hasStructuredData =
+    task || files.length > 0 || type || priority || email;
+
+  if (!hasStructuredData) {
+    return <pre className="gh-issue-body-pre">{body}</pre>;
+  }
+
+  return (
+    <div className="gh-issue-fields">
+      {task && (
+        <div className="gh-issue-field">
+          <span className="gh-issue-field-label">Task</span>
+          <p className="gh-issue-field-task">{task}</p>
+        </div>
+      )}
+
+      {files.length > 0 && (
+        <div className="gh-issue-field">
+          <span className="gh-issue-field-label">Affected Files</span>
+          <ul className="gh-affected-files-list">
+            {files.map((f) => (
+              <li key={f} className="gh-affected-file">
+                <IconFile size={13} />
+                <span className="gh-affected-file-path">{f}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {(type || priority || email) && (
+        <div className="gh-issue-field-row">
+          {type && (
+            <div className="gh-issue-field">
+              <span className="gh-issue-field-label">Type</span>
+              <span className="gh-issue-field-value">{type}</span>
+            </div>
+          )}
+          {priority && (
+            <div className="gh-issue-field">
+              <span className="gh-issue-field-label">Priority</span>
+              <span className="gh-issue-field-value">{priority}</span>
+            </div>
+          )}
+          {email && (
+            <div className="gh-issue-field">
+              <span className="gh-issue-field-label">Notify Email</span>
+              <span className="gh-issue-field-value">{email}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
    Issue Row
 ───────────────────────────────────────────── */
 
@@ -703,6 +975,17 @@ function IssueRow({ issue, comments, repo, currentUserEmail, onRefresh }) {
     extractEmail(issue.body || "")?.toLowerCase() ===
     (currentUserEmail || "").toLowerCase();
   const prUrl = isDone ? extractPrUrl(comments) : null;
+
+  // NEW: derive the compact metadata row (priority • type • relative time)
+  // entirely from existing issue fields (body + created_at). No new/fake
+  // data is introduced — values are simply extracted and formatted.
+  const priority = extractPriority(issue.body || "");
+  const rawIssueType = extractIssueType(issue.body || "");
+  const issueTypeLabel = rawIssueType
+    ? ISSUE_TYPE_LABELS[rawIssueType] || rawIssueType
+    : null;
+  const priorityEmoji = priority ? PRIORITY_EMOJI[priority] || "⚪" : null;
+  const relativeTime = formatRelativeTime(issue.created_at);
 
   const stageLabel = isDone
     ? "PR Ready"
@@ -727,9 +1010,39 @@ function IssueRow({ issue, comments, repo, currentUserEmail, onRefresh }) {
       >
         <span className={lightClass} />
         <span className="gh-status-number">#{issue.number}</span>
-        <span className="gh-status-title">
-          {issue.title.replace(/^\[Agent Call\]\s*/, "")}
-        </span>
+        {/* NEW: title + metadata row are now grouped in a column wrapper so the
+            new compact metadata line can sit directly under the title. The
+            "gh-status-title" span itself is unchanged (same class, same text). */}
+        <div className="gh-status-title-col">
+          <span className="gh-status-title">
+            {issue.title.replace(/^\[Agent Call\]\s*/, "")}
+          </span>
+          {/* NEW: compact metadata row — priority • type • relative time,
+              all derived dynamically from issue.body / issue.created_at. */}
+          <span className="gh-issue-meta-row">
+            {priority && (
+              <span className="gh-issue-meta-priority">
+                <span aria-hidden="true">{priorityEmoji}</span> {priority}
+              </span>
+            )}
+            {priority && issueTypeLabel && (
+              <span className="gh-issue-meta-dot" aria-hidden="true">
+                •
+              </span>
+            )}
+            {issueTypeLabel && (
+              <span className="gh-issue-meta-type">{issueTypeLabel}</span>
+            )}
+            {(priority || issueTypeLabel) && relativeTime && (
+              <span className="gh-issue-meta-dot" aria-hidden="true">
+                •
+              </span>
+            )}
+            {relativeTime && (
+              <span className="gh-issue-meta-time">{relativeTime}</span>
+            )}
+          </span>
+        </div>
         <div className="gh-status-meta">
           {myIssue && (
             <span className="gh-status-badge gh-status-badge--mine">mine</span>
@@ -782,7 +1095,22 @@ function IssueRow({ issue, comments, repo, currentUserEmail, onRefresh }) {
             </div>
           )}
 
-          <pre className="gh-issue-body-pre">{issue.body}</pre>
+          {/* NEW: compact repository context, placed above the issue
+              description as requested — sourced from the existing repo
+              prop (owner/repo/branch), nothing new fetched or invented. */}
+          <RepoInfoCard repo={repo} />
+
+          {/* NEW: issue-level info (status/creator/created/notify),
+              read directly off the existing issue object. */}
+          <IssueInfoSection issue={issue} />
+
+          {/* CHANGED: the raw <pre>{issue.body}</pre> dump is replaced with
+              a parsed, labeled layout (Task / Affected Files / Type /
+              Priority / Notify Email). Same underlying data — issue.body —
+              just presented instead of shown as one raw text blob. Falls
+              back to the original raw <pre> automatically if a body
+              doesn't match the expected agent-call format. */}
+          <IssueBodyFields body={issue.body} />
 
           {comments.length > 0 && (
             <div className="gh-comments-section">
@@ -875,6 +1203,125 @@ function IssueRow({ issue, comments, repo, currentUserEmail, onRefresh }) {
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Repository Overview (NEW)
+   Purely additive: reuses the same ghFetch() mock endpoints that
+   IssuesPanel/PRsPanel/FileExplorer already call elsewhere, so no new
+   business logic or API surface is introduced — only new read-only
+   summary calculations for the UI.
+───────────────────────────────────────────── */
+
+function RepoOverview({ repo, refreshTick }) {
+  const [stats, setStats] = useState({
+    activeIssues: 0,
+    pullRequests: 0,
+    files: 0,
+    discussions: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOverview() {
+      setLoading(true);
+      try {
+        const [openIssues, closedIssues, prs, treeData] = await Promise.all([
+          ghFetch(
+            `/repos/${repo.owner}/${repo.repo}/issues?state=open&per_page=50`,
+          ),
+          ghFetch(
+            `/repos/${repo.owner}/${repo.repo}/issues?state=closed&per_page=50`,
+          ),
+          ghFetch(
+            `/repos/${repo.owner}/${repo.repo}/pulls?state=all&per_page=50`,
+          ),
+          ghFetch(
+            `/repos/${repo.owner}/${repo.repo}/git/trees/HEAD?recursive=1`,
+          ),
+        ]);
+
+        // Same "is this an agent issue" filter used by IssuesPanel, applied
+        // here only to decide which issues are counted/summed — no filtering
+        // or sorting behavior elsewhere is changed.
+        const allIssues = [...openIssues, ...closedIssues];
+        const displayedIssues = allIssues.filter(
+          (i) =>
+            !i.pull_request &&
+            (i.title?.startsWith("[Agent Call]") ||
+              i.body?.includes("[Agent Call]")),
+        );
+        const activeIssues = displayedIssues.filter(
+          (i) => i.state === "open",
+        ).length;
+
+        // Discussions = total comments across the displayed issues (mirrors
+        // the same per-issue comment fetch IssuesPanel already performs).
+        const commentLists = await Promise.all(
+          displayedIssues
+            .slice(0, 20)
+            .map((issue) =>
+              ghFetch(
+                `/repos/${repo.owner}/${repo.repo}/issues/${issue.number}/comments`,
+              ).catch(() => []),
+            ),
+        );
+        const discussions = commentLists.reduce(
+          (sum, list) => sum + (list?.length || 0),
+          0,
+        );
+
+        const files = (treeData?.tree || []).filter(
+          (f) => f.type === "blob",
+        ).length;
+
+        if (!cancelled) {
+          setStats({
+            activeIssues,
+            pullRequests: prs.length,
+            files,
+            discussions,
+          });
+        }
+      } catch {
+        /* silent — overview is a non-critical summary */
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadOverview();
+    return () => {
+      cancelled = true;
+    };
+  }, [repo, refreshTick]);
+
+  const cards = [
+    { key: "activeIssues", label: "Active Issues", icon: IconInbox },
+    { key: "pullRequests", label: "Pull Requests", icon: IconGitPullRequest },
+    { key: "files", label: "Repository Files", icon: IconFile },
+    { key: "discussions", label: "Discussions", icon: IconMessageCircle },
+  ];
+
+  return (
+    <div className="gh-repo-overview">
+      {cards.map((c) => (
+        <div className="gh-overview-card" key={c.key}>
+          <span className="gh-overview-card-icon">
+            <c.icon size={16} />
+          </span>
+          <div className="gh-overview-card-body">
+            <span className="gh-overview-card-value">
+              {loading ? "—" : stats[c.key]}
+            </span>
+            <span className="gh-overview-card-label">{c.label}</span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1322,7 +1769,7 @@ function PRRow({ pr, owner, repo, user }) {
   );
 }
 
-function PRsPanel({ repo, user }) {
+function PRsPanel({ repo, user, refreshTick }) {
   const [prs, setPrs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -1341,7 +1788,7 @@ function PRsPanel({ repo, user }) {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshTick]);
 
   return (
     <div className="gh-prs-panel">
@@ -1356,14 +1803,6 @@ function PRsPanel({ repo, user }) {
             {s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
         ))}
-        <button
-          type="button"
-          className="gh-refresh-btn"
-          onClick={load}
-          title="Refresh"
-        >
-          <IconRefresh size={15} />
-        </button>
       </div>
 
       {loading && (
@@ -1599,6 +2038,10 @@ function RepoWorkspace({
   const tabSwapTimerRef = useRef(null);
   const ghTabRefs = useRef({});
   const [ghTabIndicator, setGhTabIndicator] = useState(null);
+  const [lastSync, setLastSync] = useState(new Date());
+  // NEW: sidebar collapse/expand state — purely presentational, does not
+  // touch any existing data flow, selection, or explorer logic.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setEntering(false), 20);
@@ -1646,8 +2089,14 @@ function RepoWorkspace({
     <div className={`gh-workspace${entering ? " gh-workspace--entering" : ""}`}>
       <div className="gh-workspace-header">
         <div className="gh-workspace-header-left">
-          <button type="button" className="gh-back-btn" onClick={onBack}>
-            <IconArrowLeft size={15} /> Repos
+          <button
+            type="button"
+            className="gh-back-btn"
+            onClick={onBack}
+            title="Back to repository selection"
+          >
+            <IconArrowLeft size={15} />{" "}
+            <span className="gh-back-btn-label">Back to Repositories</span>
           </button>
           <span className="gh-workspace-repo-label">
             <span className="gh-workspace-repo-icon">
@@ -1691,8 +2140,31 @@ function RepoWorkspace({
       </div>
 
       <div className="gh-workspace-body">
-        <aside className="gh-sidebar">
-          <div className="gh-sidebar-title">Files</div>
+        {/* NEW: gh-sidebar--collapsed toggles the collapsed visual state via CSS
+            (width + hidden labels). No existing markup/props were removed. */}
+        <aside
+          className={`gh-sidebar${sidebarCollapsed ? " gh-sidebar--collapsed" : ""}`}
+        >
+          {/* NEW: header row now wraps the existing "Files" title plus a
+              collapse/expand toggle button. Title text/markup unchanged. */}
+          <div className="gh-sidebar-header">
+            <div className="gh-sidebar-title">Files</div>
+            <button
+              type="button"
+              className="gh-sidebar-collapse-btn"
+              onClick={() => setSidebarCollapsed((prev) => !prev)}
+              aria-label={
+                sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+              }
+              aria-expanded={!sidebarCollapsed}
+              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              <IconChevronRight
+                size={14}
+                className={`gh-sidebar-collapse-icon${sidebarCollapsed ? "" : " gh-sidebar-collapse-icon--open"}`}
+              />
+            </button>
+          </div>
           <div className="gh-sidebar-explorer">
             <FileExplorer
               owner={repo.owner}
@@ -1713,18 +2185,26 @@ function RepoWorkspace({
                   <h3 className="gh-panel-title">Open Agent Issues</h3>
 
                   <div className="gh-panel-actions">
-                    <span className="gh-sync-time">Last synced 2m ago</span>
+                    <span className="gh-sync-time">
+                      Last synced {formatRelativeTime(lastSync)}
+                    </span>
 
                     <button
                       type="button"
                       className="gh-refresh-btn"
-                      onClick={() => setRefreshTick((t) => t + 1)}
+                      onClick={() => {
+                        setLastSync(new Date());
+                        setRefreshTick((t) => t + 1);
+                      }}
                       title="Refresh"
                     >
                       <IconRefresh size={15} />
                     </button>
                   </div>
                 </div>
+                {/* NEW: Repository Overview summary cards, placed above the
+                    issue list. "Last synced"/refresh above are unchanged. */}
+                <RepoOverview repo={repo} refreshTick={refreshTick} />
                 <IssuesPanel
                   repo={repo}
                   currentUserEmail={user?.email || ""}
@@ -1738,8 +2218,27 @@ function RepoWorkspace({
               <>
                 <div className="gh-panel-header">
                   <h3 className="gh-panel-title">Pull Requests</h3>
+
+                  <div className="gh-panel-actions">
+                    <span className="gh-sync-time">
+                      Last synced {formatRelativeTime(lastSync)}
+                    </span>
+
+                    <button
+                      type="button"
+                      className="gh-refresh-btn"
+                      onClick={() => {
+                        setLastSync(new Date());
+                        setRefreshTick((t) => t + 1);
+                      }}
+                      title="Refresh"
+                    >
+                      <IconRefresh size={15} />
+                    </button>
+                  </div>
                 </div>
-                <PRsPanel repo={repo} user={user} />
+
+                <PRsPanel repo={repo} user={user} refreshTick={refreshTick} />
               </>
             )}
             {displayTab === "create" && (

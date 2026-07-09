@@ -23,6 +23,22 @@
   --gh-accent-active: #362da4;
   --gh-accent-soft: #edecfc;
   --gh-accent-soft-border: #d8d5f8;
+  /* RGB triplet of --gh-accent, kept in sync per theme so any
+     rgba()-based glow/tint (shadows, focus rings) tracks the
+     active theme's accent instead of being frozen to one hue. */
+  --gh-accent-rgb: 74, 63, 214;
+
+  /* ---- Color: surfaces that must contrast with their parent ---- */
+  /* Overlay behind modals. Needs to be darker/opaquer in dark mode,
+     since a bg-tinted black barely separates from an already-dark page. */
+  --gh-overlay: rgba(15, 16, 20, 0.45);
+  /* Track ring for the loading spinner (the moving arc uses currentColor,
+     this is just the static remainder of the circle). */
+  --gh-spinner-track: rgba(0, 0, 0, 0.12);
+  /* Background for actual form fields (input/textarea/select/search).
+     Kept distinct from --gh-surface so fields visibly "sit inside"
+     cards instead of disappearing into them once dark mode is on. */
+  --gh-input-bg: var(--gh-surface);
 
   /* ---- Color: semantic ---- */
   --gh-success: #16794b;
@@ -68,7 +84,7 @@
     0 4px 12px rgba(20, 21, 26, 0.08), 0 1px 3px rgba(20, 21, 26, 0.05);
   --shadow-lg:
     0 12px 32px rgba(20, 21, 26, 0.14), 0 2px 8px rgba(20, 21, 26, 0.06);
-  --shadow-focus: 0 0 0 3px rgba(74, 63, 214, 0.18);
+  --shadow-focus: 0 0 0 3px rgba(var(--gh-accent-rgb), 0.18);
 
   /* ---- Motion ---- */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -77,8 +93,54 @@
   --dur-base: 200ms;
   --dur-slow: 320ms;
 }
+
+[data-theme="dark"] {
+  --gh-bg: #0f172a;
+  --gh-bg-subtle: #111827;
+
+  --gh-surface: #1e293b;
+  --gh-surface-hover: #293548;
+
+  --gh-border: #334155;
+  --gh-border-strong: #475569;
+
+  --gh-text: #f8fafc;
+  --gh-text-secondary: #cbd5e1;
+  --gh-text-tertiary: #94a3b8;
+
+  --gh-accent: #6366f1;
+  --gh-accent-hover: #7c7fff;
+  --gh-accent-active: #4f46e5;
+
+  --gh-accent-soft: #2e365f;
+  --gh-accent-soft-border: #404c80;
+  --gh-accent-rgb: 99, 102, 241;
+
+  /* Stronger, more opaque overlay: against a page that is already
+     dark, a light-mode-strength overlay barely dims the backdrop. */
+  --gh-overlay: rgba(0, 0, 0, 0.6);
+  /* Light-on-dark spinner track instead of the light-mode's dark ring. */
+  --gh-spinner-track: rgba(255, 255, 255, 0.16);
+  /* Inputs sit one step darker than --gh-surface (toward --gh-bg) so
+     fields read as "recessed wells" against their card — the same
+     contrast trick GitHub/Linear use for dark-mode form fields. */
+  --gh-input-bg: var(--gh-bg-subtle);
+
+  /* Shadows: dark surfaces already have very little to contrast
+     against, so light-mode shadow strength reads as a harsh black
+     smear. These are lower-contrast and more diffuse — "softer" —
+     and let borders (not shadows) carry most of the separation. */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.32), 0 1px 2px rgba(0, 0, 0, 0.22);
+  --shadow-md: 0 8px 20px rgba(0, 0, 0, 0.36), 0 2px 6px rgba(0, 0, 0, 0.26);
+  --shadow-lg: 0 20px 48px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-focus: 0 0 0 3px rgba(var(--gh-accent-rgb), 0.28);
+}
+
 body {
-  background: linear-gradient(180deg, #f8fafc, #eef2ff);
+  background: var(--gh-bg);
+  color: var(--gh-text);
+  transition: 0.3s;
 }
 /* ═══════════════════════════════════════════════════════════
    Reset & base
@@ -152,7 +214,7 @@ body {
   display: inline-block;
   width: 13px;
   height: 13px;
-  border: 2px solid rgba(0, 0, 0, 0.12);
+  border: 2px solid var(--gh-spinner-track);
   border-top-color: currentColor;
   border-radius: 50%;
   animation: gh-spin 0.7s linear infinite;
@@ -224,13 +286,13 @@ body {
 
   padding: 60px 60px 40px;
 
-  background: #fcfcfd;
+  background: var(--gh-surface);
 
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--gh-border);
 
   border-radius: 28px;
 
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-lg);
 }
 
 .gh-selector-intro {
@@ -254,7 +316,7 @@ body {
 
   letter-spacing: -1px;
 
-  color: #111827;
+  color: var(--gh-text);
 
   margin-bottom: 12px;
 }
@@ -262,7 +324,7 @@ body {
 .gh-selector-subheading {
   font-size: 18px;
 
-  color: #6b7280;
+  color: var(--gh-text-secondary);
 
   max-width: 650px;
 
@@ -281,7 +343,7 @@ body {
   left: 20px;
   top: 50%;
   transform: translateY(-50%);
-  color: #6366f1;
+  color: var(--gh-accent);
   pointer-events: none;
 }
 
@@ -292,11 +354,10 @@ body {
 
   padding: 0 22px 0 58px;
 
-  border: 1px solid #d1d5db;
-
   border-radius: 18px;
 
-  background: #fff;
+  background: var(--gh-input-bg);
+  border: 1px solid var(--gh-border);
 
   font-size: 17px;
 
@@ -310,9 +371,9 @@ body {
 .gh-selector-search:focus {
   outline: none;
 
-  border-color: #6366f1;
+  border-color: var(--gh-accent);
 
-  box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.12);
+  box-shadow: var(--shadow-focus);
 }
 
 .gh-status-loading,
@@ -338,19 +399,16 @@ body {
 
   border-radius: 20px;
 
-  background: white;
-
-  border: 1px solid #eef2f7;
+  background: var(--gh-surface);
+  border: 1px solid var(--gh-border);
 
   transition: 0.3s;
 }
 
 .gh-repo-card:hover {
   transform: translateY(-6px);
-
-  border-color: #6366f1;
-
-  box-shadow: 0 18px 40px rgba(99, 102, 241, 0.14);
+  border-color: var(--gh-accent);
+  box-shadow: var(--shadow-lg);
 }
 
 .gh-repo-card:active {
@@ -370,12 +428,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #eef2ff, #ddd6fe);
-  padding: 15px;
-
-  border-radius: 18px;
-
-  color: var(--gh-accent);
+  background: linear-gradient(
+    135deg,
+    var(--gh-accent-soft),
+    var(--gh-accent-soft-border)
+  );
 }
 
 .gh-repo-card-body {
@@ -397,7 +454,7 @@ body {
 .gh-repo-handle {
   font-family: var(--gh-font-mono);
   font-size: 15px;
-  color: #64748b;
+  color: var(--gh-text-tertiary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -448,6 +505,7 @@ body {
   padding: var(--sp-3) var(--sp-6);
   background: var(--gh-surface);
   border-bottom: 1px solid var(--gh-border);
+  box-shadow: var(--shadow-xs);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -461,22 +519,33 @@ body {
 }
 
 .gh-back-btn {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--gh-text-secondary);
-  padding: 7px 8px;
-  border-radius: var(--radius-sm);
-  transition:
-    background var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out);
+  gap: 10px;
+  padding: 10px 18px;
+  background: var(--gh-surface);
+  border: 1px solid var(--gh-border);
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gh-text);
+  transition: 0.25s;
+  box-shadow: var(--shadow-sm);
+  /* FIXED: this was `margin-left: -500px`, which shoved the button off the
+     left edge of the header (out of the visible viewport) even though it
+     was still correctly rendered in the DOM and wired to onBack. That's
+     why it appeared to be "missing." Removed — the button now sits in
+     its normal flow position, left of the repo label. */
 }
 
 .gh-back-btn:hover {
-  background: var(--gh-bg-subtle);
-  color: var(--gh-text);
+  background: var(--gh-accent);
+
+  color: var(--gh-text-on-accent);
+
+  transform: translateY(-2px);
+
+  box-shadow: 0 10px 25px rgba(var(--gh-accent-rgb), 0.25);
 }
 
 .gh-workspace-repo-label {
@@ -521,7 +590,7 @@ body {
   bottom: 3px;
   background: var(--gh-surface);
   border-radius: calc(var(--radius-md) - 2px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.18);
+  box-shadow: 0 6px 16px rgba(var(--gh-accent-rgb), 0.18);
   transition:
     left var(--dur-base) var(--ease-out),
     width var(--dur-base) var(--ease-out);
@@ -563,19 +632,93 @@ body {
 .gh-sidebar {
   width: 220px;
   flex-shrink: 0;
-  background: #fcfcfd;
-  border-right: 1px solid #e5e7eb;
+  background: var(--gh-surface);
+  border-right: 1px solid var(--gh-border);
   padding: var(--sp-4) var(--sp-3);
   overflow-y: auto;
+  overflow-x: hidden;
+  /* CHANGED: width is now animated so the collapse toggle can smoothly
+     shrink the sidebar down to icon-only width. */
+  transition: width var(--dur-slow) var(--ease-in-out);
+}
+
+/* NEW: collapsed sidebar state — icon-only rail. Only width/visibility
+   changes here; no functionality, handlers, or DOM nodes are removed. */
+.gh-sidebar--collapsed {
+  width: 64px;
+  padding-left: var(--sp-2);
+  padding-right: var(--sp-2);
+}
+
+/* NEW: header row holds the "FILES" heading plus the collapse toggle. */
+.gh-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  /* CHANGED: more breathing room above/below the heading, plus a
+     subtle divider (see below) to separate it from the tree. */
+  padding: var(--sp-1) var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--gh-border);
+}
+
+.gh-sidebar--collapsed .gh-sidebar-header {
+  justify-content: center;
 }
 
 .gh-sidebar-title {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  /* CHANGED: bumped up from 11px/700 for a more prominent heading, per
+     the "make FILES more prominent" requirement. Colors/vars unchanged. */
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--gh-text-tertiary);
-  padding: 0 var(--sp-2) var(--sp-3);
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  transition:
+    opacity var(--dur-base) var(--ease-out),
+    width var(--dur-base) var(--ease-out);
+}
+
+/* NEW: hide the heading label text when collapsed, icons/buttons stay. */
+.gh-sidebar--collapsed .gh-sidebar-title {
+  opacity: 0;
+  width: 0;
+  padding: 0;
+}
+
+/* NEW: the collapse/expand toggle button itself. */
+.gh-sidebar-collapse-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  color: var(--gh-text-tertiary);
+  background: transparent;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+
+.gh-sidebar-collapse-btn:hover {
+  background: var(--gh-bg-subtle);
+  color: var(--gh-text);
+}
+
+/* NEW: chevron flips direction depending on collapsed/expanded state. */
+.gh-sidebar-collapse-icon {
+  transition: transform var(--dur-base) var(--ease-in-out);
+  transform: rotate(0deg);
+}
+
+.gh-sidebar-collapse-icon--open {
+  transform: rotate(180deg);
 }
 
 .gh-sidebar-explorer {
@@ -598,11 +741,11 @@ body {
   transition:
     opacity var(--dur-slow) var(--ease-in-out),
     transform var(--dur-slow) var(--ease-in-out);
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--gh-surface);
+  border: 1px solid var(--gh-border);
   border-radius: 20px;
   padding: 28px;
-  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shadow-md);
 }
 
 .gh-tab-panel--fading {
@@ -625,13 +768,13 @@ body {
 
 .gh-sync-time {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--gh-text-tertiary);
 }
 
 .gh-panel-title {
   font-size: 30px;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--gh-text);
   letter-spacing: -0.01em;
   margin: 0;
 }
@@ -644,8 +787,8 @@ body {
   height: 40px;
   border-radius: 10px;
   color: var(--gh-text-secondary);
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  background: var(--gh-surface);
+  border: 1px solid var(--gh-border);
   cursor: pointer;
   transition:
     background 0.25s,
@@ -654,8 +797,8 @@ body {
 }
 
 .gh-refresh-btn:hover {
-  background: #eef2ff;
-  border-color: #6366f1;
+  background: var(--gh-accent-soft);
+  border-color: var(--gh-accent);
   transform: rotate(180deg);
 }
 
@@ -699,37 +842,93 @@ body {
 }
 
 .gh-tree-row {
+  position: relative;
   width: 100%;
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 5px 7px;
+  /* CHANGED: slightly taller rows + a touch more horizontal padding for
+     cleaner spacing between items. */
+  padding: 7px 8px;
   border-radius: var(--radius-sm);
   font-size: 13px;
   color: var(--gh-text-secondary);
   text-align: left;
+  /* CHANGED: added transform to the transition list so hover can animate
+     a small translateX shift smoothly alongside color/background. */
   transition:
-    background var(--dur-fast) var(--ease-out),
-    color var(--dur-fast) var(--ease-out);
+    background var(--dur-base) var(--ease-out),
+    color var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out);
 }
 
 .gh-tree-row:hover {
-  background: var(--gh-bg-subtle);
+  background: var(--gh-accent-soft);
   color: var(--gh-text);
+  /* NEW: subtle 3px nudge to the right on hover. */
+  transform: translateX(3px);
 }
 
+/* CHANGED: selected state no longer relies on the default focus outline —
+   it now gets its own soft accent fill, rounded corners, and a 3px accent
+   bar on the left (via ::before) instead of a heavy outline. */
 .gh-tree-row--selected {
   background: var(--gh-accent-soft);
   color: var(--gh-accent);
+  font-weight: 600;
+  outline: none;
+}
+
+.gh-tree-row--selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: var(--radius-full);
+  background: var(--gh-accent);
+}
+
+/* NEW: replace the default browser focus outline on tree rows with a
+   softer focus ring so keyboard navigation stays accessible without the
+   heavy purple box the old default outline produced. */
+.gh-tree-row:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
 }
 
 .gh-tree-icon {
   display: flex;
   flex-shrink: 0;
-  color: #64748b;
+  color: var(--gh-text-tertiary);
 }
 
 .gh-tree-row--selected .gh-tree-icon {
+  color: var(--gh-accent);
+}
+
+/* NEW: fixed-width slot so folder chevrons and file rows line up in the
+   same column regardless of whether a row has a chevron. */
+.gh-tree-chevron-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 12px;
+}
+
+.gh-tree-chevron {
+  display: flex;
+  color: var(--gh-text-tertiary);
+  transition: transform var(--dur-base) var(--ease-in-out);
+  transform: rotate(0deg);
+}
+
+/* NEW: chevron rotates 90deg when its folder is open — open/closed
+   folders are now visually distinct beyond just the icon swap. */
+.gh-tree-chevron--open {
+  transform: rotate(90deg);
   color: var(--gh-accent);
 }
 
@@ -737,6 +936,29 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+
+/* NEW: in the collapsed sidebar, hide labels and checkmarks, leaving
+   just icons visible, per the collapsible-sidebar requirement. */
+.gh-sidebar--collapsed .gh-tree-name,
+.gh-sidebar--collapsed .gh-tree-check {
+  display: none;
+}
+
+.gh-sidebar--collapsed .gh-tree-row {
+  justify-content: center;
+  padding-left: 4px;
+  padding-right: 4px;
+  gap: 0;
+}
+
+.gh-sidebar--collapsed .gh-tree-chevron-slot {
+  display: none;
+}
+
+.gh-sidebar--collapsed .gh-tree-list {
+  padding-left: 0 !important;
 }
 
 .gh-tree-check {
@@ -765,9 +987,201 @@ body {
   border-radius: var(--radius-lg);
   padding: 32px;
   gap: 24px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-md);
   display: flex;
   flex-direction: column;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Repository Info Card (NEW)
+   Compact "Repository / Owner / Branch" summary reused by both the
+   Create Issue form and the expanded issue detail view. Deliberately
+   neutral/GitHub-like — no accent colors, just labeled key/value pairs.
+═══════════════════════════════════════════════════════════ */
+
+.gh-repo-info-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: var(--sp-4);
+  background: var(--gh-bg-subtle);
+  border: 1px solid var(--gh-border);
+  border-radius: var(--radius-md);
+}
+
+.gh-repo-info-card--form {
+  margin-bottom: 4px;
+}
+
+.gh-repo-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.gh-repo-info-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gh-text-tertiary);
+}
+
+.gh-repo-info-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gh-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gh-repo-info-value--branch {
+  font-family: var(--gh-font-mono);
+  font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Issue Info Section (NEW)
+   Status / Created by / Created / Notify — same visual language as
+   the Repository Info Card above so the two read as one family.
+═══════════════════════════════════════════════════════════ */
+
+.gh-issue-info-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: var(--sp-4);
+  background: var(--gh-surface);
+  border: 1px solid var(--gh-border);
+  border-radius: var(--radius-md);
+}
+
+.gh-issue-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.gh-issue-info-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gh-text-tertiary);
+}
+
+.gh-issue-info-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gh-text);
+}
+
+.gh-issue-info-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.gh-issue-info-status::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--gh-text-tertiary);
+}
+
+.gh-issue-info-status--open::before {
+  background: var(--gh-accent);
+}
+
+.gh-issue-info-status--closed::before {
+  background: var(--gh-success);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Issue Body Fields (NEW)
+   Structured Task / Affected Files / Type / Priority / Notify Email
+   layout that replaces the raw <pre>{issue.body}</pre> dump.
+═══════════════════════════════════════════════════════════ */
+
+.gh-issue-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.gh-issue-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gh-issue-field-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gh-text-tertiary);
+}
+
+.gh-issue-field-task {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--gh-text-secondary);
+}
+
+.gh-issue-field-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--gh-text);
+}
+
+.gh-issue-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  border-top: 1px solid var(--gh-border);
+  padding-top: var(--sp-3);
+}
+
+.gh-affected-files-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gh-affected-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--gh-bg-subtle);
+  border: 1px solid var(--gh-border);
+  border-radius: var(--radius-sm);
+  color: var(--gh-text-tertiary);
+}
+
+.gh-affected-file-path {
+  font-family: var(--gh-font-mono);
+  font-size: 12.5px;
+  color: var(--gh-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gh-form-field {
@@ -792,7 +1206,7 @@ body {
   border: 1px solid var(--gh-border);
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: var(--gh-surface);
+  background: var(--gh-input-bg);
   transition:
     border-color var(--dur-fast) var(--ease-out),
     box-shadow var(--dur-fast) var(--ease-out);
@@ -823,7 +1237,7 @@ body {
   border-radius: var(--radius-md);
   padding: 14px 16px;
   font-size: 15px;
-  background: var(--gh-surface);
+  background: var(--gh-input-bg);
   color: var(--gh-text);
   min-height: 50px;
   line-height: 1.7;
@@ -838,7 +1252,7 @@ body {
   border-radius: var(--radius-md);
   padding: 14px 16px;
   font-size: 15px;
-  background: var(--gh-surface);
+  background: var(--gh-input-bg);
   color: var(--gh-text);
   min-height: 110px;
   line-height: 1.7;
@@ -855,7 +1269,7 @@ body {
 .gh-form-input:hover,
 .gh-form-textarea:hover,
 .gh-form-select:hover {
-  border-color: #c7d2fe;
+  border-color: var(--gh-accent-soft-border);
 }
 
 .gh-form-input:focus,
@@ -884,11 +1298,20 @@ body {
 
 .gh-form-select {
   appearance: none;
+  /* Chevron stroke color is baked into the data-URI (SVG can't read
+     CSS custom properties), so it's pinned to light-mode's
+     --gh-text-tertiary (#8a90a0). The [data-theme="dark"] override
+     below swaps in dark mode's --gh-text-tertiary (#94a3b8) so the
+     arrow stays visible instead of nearly disappearing on dark fields. */
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238a90a0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 34px;
   cursor: pointer;
+}
+
+[data-theme="dark"] .gh-form-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
 }
 
 .gh-form-row--cols {
@@ -1059,7 +1482,7 @@ body {
 
 .gh-form-hint {
   font-size: 13px;
-  color: #64748b;
+  color: var(--gh-text-secondary);
 }
 
 .gh-form-hint strong {
@@ -1073,8 +1496,8 @@ body {
   align-items: center;
   gap: 7px;
   font-size: 13.5px;
-  color: white;
-  background: #4f46e5;
+  color: var(--gh-text-on-accent);
+  background: var(--gh-accent);
   padding: 12px 22px;
   font-weight: 700;
   border-radius: 12px;
@@ -1086,7 +1509,7 @@ body {
 }
 
 .gh-submit-btn:hover:not(:disabled) {
-  background: #4338ca;
+  background: var(--gh-accent-hover);
   box-shadow: var(--shadow-sm);
   transform: translateY(-1px);
 }
@@ -1097,9 +1520,9 @@ body {
 }
 
 .gh-submit-btn:disabled {
-  background: #e5e7eb;
-  color: #94a3b8;
-  border-color: #e5e7eb;
+  background: var(--gh-border);
+  color: var(--gh-text-tertiary);
+  border-color: var(--gh-border);
   cursor: not-allowed;
   box-shadow: none;
   transform: none;
@@ -1115,11 +1538,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: #fcfcff;
-  border: 1px solid #e2e8f0;
+  background: var(--gh-surface);
+  border: 1px solid var(--gh-border);
   border-radius: 16px;
   padding: 20px;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+  box-shadow: var(--shadow-md);
 }
 
 .gh-reply-label {
@@ -1130,14 +1553,14 @@ body {
 }
 
 .gh-reply-info {
-  border: 1px solid #d8ddf7;
+  border: 1px solid var(--gh-border);
   border-radius: var(--radius-md);
   min-height: 110px;
   padding: 14px;
   font-size: 13.5px;
   font-family: inherit;
   resize: vertical;
-  background: white;
+  background: var(--gh-input-bg);
   transition:
     border-color var(--dur-fast) var(--ease-out),
     box-shadow var(--dur-fast) var(--ease-out);
@@ -1145,8 +1568,85 @@ body {
 
 .gh-reply-info:focus {
   outline: none;
-  border-color: #6366f1;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+  border-color: var(--gh-accent);
+  box-shadow: var(--shadow-focus);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Repository Overview (NEW)
+   4 summary cards shown above the issue list. Uses only existing
+   CSS variables (spacing/radius/shadow/color tokens) so light/dark
+   theming is automatically consistent with the rest of the app.
+═══════════════════════════════════════════════════════════ */
+
+.gh-repo-overview {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-6);
+}
+
+.gh-overview-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-4);
+  background: var(--gh-surface);
+  border: 1px solid var(--gh-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out);
+}
+
+.gh-overview-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--gh-accent);
+}
+
+.gh-overview-card-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--gh-accent-soft);
+  color: var(--gh-accent);
+}
+
+.gh-overview-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gh-overview-card-value {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--gh-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.gh-overview-card-label {
+  font-size: 12px;
+  color: var(--gh-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 860px) {
+  .gh-repo-overview {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1160,8 +1660,8 @@ body {
 }
 
 .gh-issue-row {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--gh-surface);
+  border: 1px solid var(--gh-border);
   border-left: 4px solid var(--gh-border-strong);
   cursor: pointer;
   border-radius: 14px;
@@ -1175,9 +1675,9 @@ body {
 
 .gh-issue-row:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-md);
 
-  border-color: #6366f1;
+  border-color: var(--gh-accent);
 }
 
 .gh-issue-row--done {
@@ -1191,10 +1691,27 @@ body {
 .gh-issue-row-header {
   width: 100%;
   display: flex;
-  align-items: center;
+  /* CHANGED from center to flex-start: now that the title cell can hold two
+     stacked lines (title + metadata row), top-aligning keeps the status
+     light/number/badges visually level with the title instead of the
+     vertical center of a now-taller cell. */
+  align-items: flex-start;
   gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-4);
+  /* CHANGED: slightly taller vertical padding to give the extra metadata
+     line room to breathe (visual hierarchy / density request). */
+  padding: var(--sp-4);
   text-align: left;
+}
+
+/* NEW: since the header is now top-aligned, nudge the status light down so
+   it optically centers against the title line rather than the whole cell. */
+.gh-issue-row-header .gh-status-light,
+.gh-issue-row-header .gh-status-number {
+  margin-top: 2px;
+}
+
+.gh-issue-row-header .gh-status-meta {
+  margin-top: 1px;
 }
 
 .gh-status-light {
@@ -1238,6 +1755,17 @@ body {
   color: var(--gh-text-tertiary);
 }
 
+/* NEW: column wrapper for title + the new metadata row underneath it.
+   ".gh-status-title" itself is untouched below, just now a child of this
+   flex column instead of a direct flex-row sibling. */
+.gh-status-title-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
 .gh-status-title {
   flex: 1;
   min-width: 0;
@@ -1247,6 +1775,36 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* NEW: compact metadata row — "🟠 High • Development • 2 days ago" */
+.gh-issue-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--gh-text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gh-issue-meta-priority {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--gh-text-secondary);
+  font-weight: 600;
+}
+
+.gh-issue-meta-type,
+.gh-issue-meta-time {
+  color: var(--gh-text-tertiary);
+}
+
+.gh-issue-meta-dot {
+  color: var(--gh-text-tertiary);
+  opacity: 0.6;
 }
 
 .gh-status-meta {
@@ -1393,7 +1951,11 @@ body {
 
 .gh-pr-refine-hint code {
   font-family: var(--gh-font-mono);
-  background: rgba(0, 0, 0, 0.06);
+  /* Was `background: 1px solid var(--gh-border)` — an invalid value for
+     `background`, so the browser dropped the whole declaration and the
+     chip had no fill in either theme. Now it correctly uses a subtle
+     theme-aware fill. */
+  background: var(--gh-bg-subtle);
   padding: 1px 5px;
   border-radius: 4px;
 }
@@ -1449,7 +2011,7 @@ body {
 }
 
 .gh-comment--bot {
-  background: #f8f9ff;
+  background: var(--gh-accent-soft);
   border-color: var(--gh-accent-soft-border);
 }
 
@@ -1477,13 +2039,13 @@ body {
 }
 
 .gh-comment--bot .gh-comment-author-icon {
-  color: var(--gh-accent);
+  color: var(--gh-accent-soft);
 }
 
 .gh-comment-time {
   flex: 1;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--gh-text-tertiary);
   text-align: right;
   padding-right: var(--sp-2);
 }
@@ -1502,7 +2064,7 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #64748b;
+  color: var(--gh-text-tertiary);
 }
 
 .gh-status-open-link {
@@ -1510,7 +2072,7 @@ body {
   align-items: center;
   gap: 5px;
   font-size: 12px;
-  color: #64748b;
+  color: var(--gh-text-secondary);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -1909,7 +2471,7 @@ body {
 .gh-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 16, 20, 0.45);
+  background: var(--gh-overlay);
   backdrop-filter: blur(2px);
   display: flex;
   align-items: center;
@@ -2293,8 +2855,9 @@ body {
   justify-content: space-between;
   align-items: center;
 
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  background: var(--gh-surface);
+  border-bottom: 1px solid var(--gh-border);
+  box-shadow: var(--shadow-xs);
 }
 
 .sandbox-logo {
@@ -2310,7 +2873,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #eef2ff;
+  background: var(--gh-accent-soft);
   font-size: 20px;
 }
 
@@ -2321,7 +2884,7 @@ body {
 
 .sandbox-logo p {
   margin: 0;
-  color: #64748b;
+  color: var(--gh-text-secondary);
   font-size: 13px;
 }
 
@@ -2335,8 +2898,8 @@ body {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: #4f46e5;
-  color: white;
+  background: var(--gh-accent);
+  color: var(--gh-text-on-accent);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -2349,6 +2912,188 @@ body {
   gap: 20px;
 }
 
+.sandbox-settings-btn {
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 12px;
+  background: var(--gh-surface);
+
+  color: var(--gh-text); /* icon color */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sandbox-settings-btn:hover {
+  background: var(--gh-accent-soft);
+  color: var(--gh-accent);
+  transform: rotate(90deg);
+}
+
+.sandbox-settings-btn svg {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+  color: inherit;
+}
+
+/* ─────────────────────────────────────────────
+   Settings dropdown (replaces the old dedicated
+   Settings page). Positioning/animation pattern
+   mirrors .gh-notif-dropdown for visual consistency.
+
+   NOTE: this dropdown is mounted in the app header
+   (App.jsx), which sits OUTSIDE .gh-selector/.gh-workspace.
+   Those two wrappers are what give every other button in
+   the app its border-box sizing, inherited font, and
+   "no native chrome" baseline (see rules around line 150).
+   Without an equivalent reset here, these buttons would
+   fall back to native OS button styling. This local reset
+   reproduces just that baseline, scoped only to this
+   component, without touching the existing .gh-selector/
+   .gh-workspace rules used elsewhere. */
+
+.gh-settings-dropdown-wrap,
+.gh-settings-dropdown-wrap * {
+  box-sizing: border-box;
+}
+
+.gh-settings-dropdown-wrap button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Scoped to the panel's own buttons (Light/Dark), NOT the gear button —
+   .sandbox-settings-btn already sets its own background/border and has
+   lower specificity than `.gh-settings-dropdown-wrap button` would, so
+   applying background:none/border:none at the wrap level would silently
+   win and strip the gear button's styling. Keeping it panel-scoped avoids
+   that. */
+.gh-settings-dropdown button {
+  background: none;
+  border: none;
+}
+
+.gh-settings-dropdown-wrap *:focus-visible {
+  outline: 2px solid var(--gh-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.gh-settings-dropdown-wrap {
+  position: relative;
+}
+
+.gh-settings-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 260px;
+  background: var(--gh-surface);
+  border: 1px solid var(--gh-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  transform: translateY(-6px) scale(0.98);
+  visibility: hidden;
+  pointer-events: none;
+  transform-origin: top right;
+  transition:
+    opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--ease-out),
+    visibility var(--dur-base);
+  z-index: 50;
+}
+
+.gh-settings-dropdown--open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.gh-settings-dropdown-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--gh-border);
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--gh-text);
+}
+
+.gh-settings-dropdown-section {
+  padding: var(--sp-3) var(--sp-4);
+}
+
+.gh-settings-dropdown-label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--gh-text-tertiary);
+  margin-bottom: var(--sp-2);
+}
+
+.gh-settings-theme-row {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.gh-settings-theme-row button {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gh-border);
+  background: var(--gh-bg-subtle);
+  color: var(--gh-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+
+.gh-settings-theme-row button:hover {
+  background: var(--gh-accent-soft);
+}
+
+.gh-settings-theme-row button.active {
+  background: var(--gh-accent);
+  border-color: var(--gh-accent);
+  color: var(--gh-text-on-accent);
+}
+
+.gh-settings-dropdown-divider {
+  height: 1px;
+  background: var(--gh-border);
+  margin: 0 var(--sp-4);
+}
+
+.gh-settings-dropdown-version {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.gh-settings-dropdown-version .gh-settings-dropdown-label {
+  margin-bottom: 0;
+}
+
+.gh-settings-dropdown-value {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--gh-text-secondary);
+}
 /* ═══════════════════════════════════════════════════════════
    Responsive fine-tuning
 ═══════════════════════════════════════════════════════════ */
@@ -2368,6 +3113,12 @@ body {
   }
   .gh-view-tab-label {
     display: none;
+  }
+  .gh-back-btn-label {
+    display: none;
+  }
+  .gh-back-btn {
+    padding: 10px 12px;
   }
   .gh-toast-panel {
     width: calc(100vw - 40px);
