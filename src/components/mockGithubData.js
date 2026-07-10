@@ -411,7 +411,7 @@ const _prCommentStore = {};
 
 /* ═══════════════════════════════════════════════════════════════════
    Public mock API — drop-in replacements for the real fetchers
-   ═══════════════════════════════════════════════════════════════════ */
+   ═══════════════════════════════════════/════════════════════════════ */
 
 /** Simulates fetchTrackedRepos() from githubReposConfig.js */
 export async function mockFetchTrackedRepos() {
