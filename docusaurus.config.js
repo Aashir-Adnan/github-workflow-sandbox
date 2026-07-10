@@ -1,27 +1,27 @@
-import { themes as prismThemes } from 'prism-react-renderer';
+import { themes as prismThemes } from "prism-react-renderer";
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'GitHub Workflow Sandbox',
-  tagline: 'Intern evaluation module — mock data, no API keys needed',
-  favicon: 'img/favicon.ico',
+  title: "GitHub Workflow Sandbox",
+  tagline: "Intern evaluation module — mock data, no API keys needed",
+  favicon: "img/favicon.ico",
 
-  url: 'http://localhost',
-  baseUrl: '/',
+  url: "http://localhost",
+  baseUrl: "/",
 
-  onBrokenLinks: 'warn',
-  onBrokenMarkdownLinks: 'warn',
+  onBrokenLinks: "warn",
+  onBrokenMarkdownLinks: "warn",
 
-  i18n: { defaultLocale: 'en', locales: ['en'] },
+  i18n: { defaultLocale: "en", locales: ["en"] },
 
   presets: [
     [
-      'classic',
+      "classic",
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
-        docs: { sidebarPath: './sidebars.js' },
+        docs: { sidebarPath: "./sidebars.js" },
         blog: false,
-        theme: { customCss: './src/css/custom.css' },
+        theme: { customCss: "./src/css/custom.css" },
       }),
     ],
   ],
@@ -31,14 +31,11 @@ const config = {
     ({
       colorMode: { respectPrefersColorScheme: true },
       navbar: {
-        title: 'GH Workflow Sandbox',
-        items: [
-          { to: '/tools/github-sandbox', label: 'Sandbox', position: 'left' },
-        ],
+        items: [],
       },
       footer: {
-        style: 'dark',
-        copyright: 'Intern evaluation sandbox — not for production use.',
+        style: "dark",
+        copyright: "Intern evaluation sandbox — not for production use.",
       },
       prism: {
         theme: prismThemes.github,
