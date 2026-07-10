@@ -1343,6 +1343,7 @@ function IssuesPanel({
   const prevCommentCounts = useRef({});
 
   const fetchIssues = useCallback(async () => {
+    console.log("Fetching issues...", Date.now());
     setLoading(true);
     try {
       const [openData, closedData] = await Promise.all([

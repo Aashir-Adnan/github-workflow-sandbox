@@ -506,9 +506,10 @@ body {
   background: var(--gh-surface);
   border-bottom: 1px solid var(--gh-border);
   box-shadow: var(--shadow-xs);
+
   position: sticky;
-  top: 0;
-  z-index: 20;
+  top: 72px; /* <-- pehle 0 tha */
+  z-index: 999;
 }
 
 .gh-workspace-header-left {
@@ -666,10 +667,13 @@ body {
 
 .gh-sidebar-explorer {
   flex: 1;
-  min-height: 0;
-
+  height: 250px;
   overflow-y: auto;
-  overflow-x: hidden;
+}
+
+.gh-explorer {
+  height: 100%;
+  overflow-y: auto;
 }
 
 .gh-sidebar--collapsed .gh-sidebar-header {
@@ -732,6 +736,10 @@ body {
 
 .gh-sidebar-explorer {
   font-size: 13px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .gh-workspace-main {
@@ -2858,6 +2866,9 @@ body {
 }
 
 .sandbox-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
   height: 72px;
   padding: 0 32px;
   display: flex;
@@ -3111,6 +3122,92 @@ body {
 .main-wrapper {
   margin-top: 0 !important;
   padding-top: 0 !important;
+}
+
+/* ---------- PR Ready Banner (Dark Theme) ---------- */
+
+[data-theme="dark"] .gh-pr-ready-banner {
+  background: linear-gradient(
+    90deg,
+    rgba(34, 197, 94, 0.12),
+    var(--gh-surface) 18%
+  );
+
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  border-left: 4px solid #22c55e;
+
+  box-shadow:
+    0 0 0 1px rgba(34, 197, 94, 0.08),
+    0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="dark"] .gh-pr-ready-banner-main {
+  color: #22c55e;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .gh-pr-ready-banner-main svg {
+  color: #22c55e;
+}
+
+[data-theme="dark"] .gh-pr-ready-link {
+  color: #7c9cff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+[data-theme="dark"] .gh-pr-ready-link:hover {
+  color: #a5b8ff;
+  text-decoration: underline;
+}
+
+[data-theme="dark"] .gh-pr-refine-hint {
+  color: var(--gh-text-secondary);
+}
+
+[data-theme="dark"] .gh-pr-refine-hint code {
+  background: #111827;
+  border: 1px solid var(--gh-border);
+  color: #dbeafe;
+}
+
+/* Folder explorer scrollbar */
+.gh-sidebar-explorer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.gh-sidebar-explorer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.gh-sidebar-explorer::-webkit-scrollbar-thumb {
+  background: #c7cfdb;
+  border-radius: 999px;
+}
+
+.gh-sidebar-explorer::-webkit-scrollbar-thumb:hover {
+  background: #9ea8b8;
+}
+
+[data-theme="dark"] .gh-sidebar-explorer::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-theme="dark"] .gh-sidebar-explorer::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+[data-theme="dark"] .gh-sidebar-explorer::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+.gh-sidebar-explorer {
+  scrollbar-width: thin;
+  scrollbar-color: #c7cfdb transparent;
+}
+
+[data-theme="dark"] .gh-sidebar-explorer {
+  scrollbar-color: #475569 transparent;
 }
 /* ═══════════════════════════════════════════════════════════
    Responsive fine-tuning
