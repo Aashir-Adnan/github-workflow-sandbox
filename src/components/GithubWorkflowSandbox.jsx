@@ -519,7 +519,7 @@ function IssueCardSkeleton() {
    Issues Panel
 ───────────────────────────────────────────── */
 
-function IssuesPanel({ repo, currentUserEmail, onNewNotification, refreshTick, onRefresh, onCreateIssue }) {
+function IssuesPanel({ repo, currentUserEmail, onNewNotification, refreshTick, onRefresh, onCreateIssue, onLoadingChange }) {
   const [issues, setIssues] = useState([]);
   const [commentMap, setCommentMap] = useState({});
   const [loading, setLoading] = useState(false);
@@ -530,6 +530,7 @@ function IssuesPanel({ repo, currentUserEmail, onNewNotification, refreshTick, o
 
   const fetchIssues = useCallback(async () => {
     setLoading(true);
+    onLoadingChange?.(true);
     try {
       const [openData, closedData] = await Promise.all([
         ghFetch(`/repos/${repo.owner}/${repo.repo}/issues?state=open&per_page=50`),
@@ -547,7 +548,11 @@ function IssuesPanel({ repo, currentUserEmail, onNewNotification, refreshTick, o
         })
       );
       setCommentMap(Object.fromEntries(entries));
-    } catch { /* silent */ } finally { setLoading(false); }
+    } 
+    finally {
+    setLoading(false);
+    onLoadingChange?.(false);
+    }
   }, [repo]);
 
   useEffect(() => { fetchIssues(); }, [fetchIssues, refreshTick]);
@@ -940,7 +945,7 @@ function PRRow({ pr, owner, repo, user }) {
   );
 }
 
-function PRsPanel({ repo, user }) {
+function PRsPanel({ repo, user, refreshTick }) {
   const [prs, setPrs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -955,9 +960,10 @@ function PRsPanel({ repo, user }) {
       .finally(() => setLoading(false));
   }, [repo, stateFilter]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, refreshTick]);   // 👈 ek hi effect, load ke baad, refreshTick ke sath
 
   return (
+
     <div className="gh-prs-panel">
       <div className="gh-prs-filter-row">
         {['open', 'closed', 'all'].map((s) => (
@@ -1068,6 +1074,9 @@ const WORKSPACE_TABS = [
 ];
 
 function RepoWorkspace({ repo, user, notifications, onNewNotification, onBack, onDismiss, onDismissAll }) {
+const [issuesLoading, setIssuesLoading] = useState(false);
+const [prsRefreshTick, setPrsRefreshTick] = useState(0);
+const [lastRefreshedAt, setLastRefreshedAt] = useState(Date.now());
   const [tab, setTab] = useState('issues');
   const [displayTab, setDisplayTab] = useState('issues');
   const [tabFading, setTabFading] = useState(false);
@@ -1115,6 +1124,11 @@ function RepoWorkspace({ repo, user, notifications, onNewNotification, onBack, o
     },
     [tab],
   );
+  const handleRefreshClick = () => {
+  setRefreshTick((t) => t + 1);
+  setPrsRefreshTick((t) => t + 1);
+  setLastRefreshedAt(Date.now());
+};
 
   const handleIssueCreated = () => {
     handleTabChange('issues');
@@ -1132,19 +1146,42 @@ function RepoWorkspace({ repo, user, notifications, onNewNotification, onBack, o
           </nav>
         </div>
         <div className="gh-workspace-header-right">
-          <div className="gh-view-tabs">
-            {ghTabIndicator && <div className="gh-view-tab-indicator" style={{ left: ghTabIndicator.left, width: ghTabIndicator.width }} />}
-            {WORKSPACE_TABS.map((t) => (
-              <button key={t.id} type="button"
-                ref={(el) => { ghTabRefs.current[t.id] = el; }}
-                className={`gh-view-tab${tab === t.id ? ' gh-view-tab--active' : ''}`}
-                onClick={() => handleTabChange(t.id)}>
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <NotificationBell notifications={notifications} onDismiss={onDismiss} onDismissAll={onDismissAll} />
-        </div>
+  <button
+    type="button"
+    className="gh-refresh-btn"
+    onClick={(e) => { e.currentTarget.blur(); handleRefreshClick(); }}
+    disabled={issuesLoading}
+    title="Refresh"
+  >
+    <span className={issuesLoading ? 'gh-refresh-spinning' : ''}>↻</span>
+  </button>
+
+  <div className="gh-view-tabs">
+    {ghTabIndicator && (
+      <div
+        className="gh-view-tab-indicator"
+        style={{ left: ghTabIndicator.left, width: ghTabIndicator.width }}
+      />
+    )}
+    {WORKSPACE_TABS.map((t) => (
+      <button
+        key={t.id}
+        type="button"
+        ref={(el) => { ghTabRefs.current[t.id] = el; }}
+        className={`gh-view-tab${tab === t.id ? ' gh-view-tab--active' : ''}`}
+        onClick={() => handleTabChange(t.id)}
+      >
+        {t.label}
+      </button>
+    ))}
+  </div>
+
+  <NotificationBell
+    notifications={notifications}
+    onDismiss={onDismiss}
+    onDismissAll={onDismissAll}
+  />
+</div>
       </div>
 
       <div className="gh-workspace-body">
@@ -1153,17 +1190,13 @@ function RepoWorkspace({ repo, user, notifications, onNewNotification, onBack, o
 
       {displayTab === 'issues' && (
         <>
-          <div className="gh-panel-header">
-            <h3 className="gh-panel-title">Open Agent Issues</h3>
-
-            <button
-              type="button"
-              className="gh-refresh-btn"
-              onClick={() => setRefreshTick((t) => t + 1)}
-            >
-              ↻
-            </button>
-          </div>
+        
+     <div className="gh-panel-header" style={{ marginBottom: '1rem' }}>
+  <h3 className="gh-panel-title"><b>Open Agent Issues</b></h3>
+  <span style={{ fontSize: '0.75rem', opacity: 0.6 }}>
+    Updated {new Date(lastRefreshedAt).toLocaleTimeString()}
+  </span>
+</div>
 
           <IssuesPanel
             repo={repo}
@@ -1172,6 +1205,7 @@ function RepoWorkspace({ repo, user, notifications, onNewNotification, onBack, o
             refreshTick={refreshTick}
             onRefresh={() => setRefreshTick((t) => t + 1)}
             onCreateIssue={() => handleTabChange("create")}
+            onLoadingChange={setIssuesLoading}  
           />
         </>
       )}
@@ -1185,6 +1219,7 @@ function RepoWorkspace({ repo, user, notifications, onNewNotification, onBack, o
           <PRsPanel
             repo={repo}
             user={user}
+            refreshTick={prsRefreshTick} 
           />
         </>
       )}

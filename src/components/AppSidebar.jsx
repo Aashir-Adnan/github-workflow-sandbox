@@ -70,19 +70,27 @@ export default function AppSidebar({
       <nav className="app-sidebar-nav">
         <div className="app-sidebar-repos-block">
           <button
-            type="button"
-            className={`app-sidebar-item app-sidebar-repos-toggle${view === 'repos' && !selectedRepo ? ' app-sidebar-item--active' : ''}`}
-            onClick={() => {
-  onBackToRepos?.();      // previous repo clear
-  onNavigate('repos');    // repositories dashboard
-  setReposOpen((v) => !v);
-}}
-            title="Repositories"
-          >
-            <span className={`app-sidebar-repos-arrow${reposOpen ? ' app-sidebar-repos-arrow--open' : ''}`}>▶</span>
-            <span className="app-sidebar-icon">📦</span>
-            <span className="app-sidebar-label">Repositories</span>
-          </button>
+  type="button"
+  className={`app-sidebar-item app-sidebar-repos-toggle${view === 'repos' && !selectedRepo ? ' app-sidebar-item--active' : ''}`}
+  onClick={() => {
+    onBackToRepos?.();
+    onNavigate('repos');
+    setReposOpen(true);   // 👈 navigate karte waqt hamesha list khol do
+  }}
+  title="Repositories"
+>
+  <span
+    className={`app-sidebar-repos-arrow${reposOpen ? ' app-sidebar-repos-arrow--open' : ''}`}
+    onClick={(e) => {
+      e.stopPropagation();
+      setReposOpen((v) => !v);   // 👈 sirf arrow click se collapse/expand
+    }}
+  >
+    ▶
+  </span>
+  <span className="app-sidebar-icon">📦</span>
+  <span className="app-sidebar-label">Repositories</span>
+</button>
 
           {reposOpen && (
             <div className="app-sidebar-repos-list">
@@ -142,7 +150,12 @@ export default function AppSidebar({
 }}
           title="Settings"
         >
-          <span className="app-sidebar-icon">⚙️</span>
+          <span className="app-sidebar-icon" style={{ fontSize: '1.1rem' }}>
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </svg>
+</span>
           <span className="app-sidebar-label">Settings</span>
         </button>
       </nav>
