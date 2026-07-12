@@ -387,165 +387,235 @@ export default function GithubWorkflowSandbox({ user }) {
 
         {/* ─── column 3: stage ─── */}
         <div className="ghw-stage">
-          {!selected && (
-            <div className="ghw-stage-empty">
-              <div className="big">nothing selected</div>
-              <div>pick an issue or pull request from the feed</div>
+  {!selected && (
+    <div className="ghw-stage-empty">
+      <div className="big">{currentRepo.name}</div>
+      <div>pick an issue or pull request from the feed to get started</div>
+      <div className="ghw-stat-grid">
+        <div className="ghw-stat-card"><div className="ghw-stat-num">{issues.filter(i => i.state === 'open').length}</div><div className="ghw-stat-label">Open issues</div></div>
+        <div className="ghw-stat-card"><div className="ghw-stat-num">{issues.filter(i => i.state === 'closed').length}</div><div className="ghw-stat-label">PR ready</div></div>
+        <div className="ghw-stat-card"><div className="ghw-stat-num">{prs.filter(p => p.state === 'open').length}</div><div className="ghw-stat-label">Open PRs</div></div>
+        <div className="ghw-stat-card"><div className="ghw-stat-num">{prs.filter(p => p.state === 'open' && !p.draft && p.mergeable).length}</div><div className="ghw-stat-label">Mergeable</div></div>
+      </div>
+    </div>
+  )}
+
+  {/* 2. NEW ISSUE FORM STATE: Split into our premium 2-column workspace grid */}
+  {selected && selected.type === 'new' && (
+    <div className="ghw-stage-workspace">
+      
+      {/* ================= LEFT COLUMN: MAIN INPUT WORKSPACE ================= */}
+      <div className="ghw-stage-main">
+        <div className="ghw-stage-head">
+          <h1>New agent issue</h1>
+          <div className="ghw-stage-sub">{key}</div>
+        </div>
+
+        <div className="ghw-form-field">
+          <label>title</label>
+          <input 
+            value={form.title} 
+            onChange={(e) => setForm({ ...form, title: e.target.value })} 
+            placeholder="e.g. Add caching layer to search" 
+          />
+        </div>
+
+        <div className="ghw-form-field">
+          <label>task</label>
+          <textarea 
+            rows={8} /* Boosted default height for larger viewports */
+            value={form.task} 
+            onChange={(e) => setForm({ ...form, task: e.target.value })} 
+            placeholder="describe exactly what the agent should do..." 
+          />
+        </div>
+
+        <div className="ghw-form-row">
+          <div className="ghw-form-field">
+            <label>type</label>
+            <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+              <option>Code Writer</option>
+              <option>Code Reviewer</option>
+              <option>Code Suggester</option>
+            </select>
+          </div>
+          <div className="ghw-form-field">
+            <label>priority</label>
+            <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
+              <option>Normal</option>
+              <option>Immediate</option>
+              <option>High</option>
+              <option>Low</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Action controls grouped neatly at the bottom of the form area */}
+        <div style={{ marginTop: '24px' }}>
+          <button className="ghw-submit-btn" onClick={createIssue}>Create issue</button>
+          <button className="ghw-cancel-link" onClick={() => setSelected(null)}>cancel</button>
+        </div>
+      </div>
+
+      {/* ================= RIGHT COLUMN: CONTEXT FILE SIDEBAR ================= */}
+      <div className="ghw-stage-sidebar">
+        <div className="ghw-section-label">Context Explorer</div>
+        
+        <div className="ghw-ctx-chips">
+          {newIssueContext.length === 0 ? (
+            <span style={{ color: 'var(--ghw-text-faint)', fontSize: 11 }}>no files selected</span>
+          ) : (
+            newIssueContext.map((p) => <span key={p} className="ghw-ctx-chip ghw-mono">{p}</span>)
+          )}
+        </div>
+
+        <button type="button" className="ghw-picker-toggle" onClick={() => setCtxPickerOpen((o) => !o)}>
+          {ctxPickerOpen ? 'hide file explorer' : 'browse repo files'}
+        </button>
+
+        {ctxPickerOpen && (
+          <FileTree 
+            tree={fileTree} 
+            pickerMode 
+            pickedPaths={newIssueContext} 
+            onTogglePath={toggleContextPath} 
+          />
+        )}
+      </div>
+    </div>
+  )}
+
+  {selectedIssue && (() => {
+    const stage = stageOf(selectedIssue, selectedComments);
+    const parsed = parseAgentBody(selectedIssue.body);
+    const prNum = linkedPrNumber(selectedComments);
+    return (
+      <div className="ghw-stage-workspace">
+        <div className="ghw-stage-main">
+          <div className="ghw-stage-head">
+            <div className="num ghw-mono">#{selectedIssue.number}</div>
+            <h1>{cleanTitle(selectedIssue.title)}</h1>
+            <div className="ghw-stage-sub">opened {timeAgo(selectedIssue.created_at)} by {selectedIssue.user.login}</div>
+            <div className="ghw-stage-badges">
+              <span className={`ghw-chip stage-${stage}`}>{stageLabel(stage)}</span>
+              <span className={`ghw-chip ${priClass(parsed.priority)}`}>{parsed.priority}</span>
+              <span className="ghw-chip type">{parsed.type}</span>
+            </div>
+          </div>
+
+          {stage === 'done' && (
+            <div className="ghw-banner ok">
+              <span>PR is ready for this issue.</span>
+              {prNum && (
+                <a className="jump" onClick={() => { setActiveNav('prs'); setSelected({ type: 'pr', num: prNum }); }}>
+                  view PR #{prNum} &#8594;
+                </a>
+              )}
             </div>
           )}
 
-          {selected && selected.type === 'new' && (
-            <>
-              <div className="ghw-stage-head"><h1>New agent issue</h1><div className="ghw-stage-sub">{key}</div></div>
-              <div className="ghw-form-field">
-                <label>title</label>
-                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Add caching layer to search" />
-              </div>
-              <div className="ghw-form-field">
-                <label>task</label>
-                <textarea rows={5} value={form.task} onChange={(e) => setForm({ ...form, task: e.target.value })} placeholder="describe exactly what the agent should do..." />
-              </div>
-              <div className="ghw-form-field">
-                <label>context</label>
-                <div className="ghw-ctx-chips">
-                  {newIssueContext.length === 0
-                    ? <span style={{ color: 'var(--ghw-text-faint)', fontSize: 11 }}>no files selected</span>
-                    : newIssueContext.map((p) => <span key={p} className="ghw-ctx-chip ghw-mono">{p}</span>)}
+          <div className="ghw-issue-body">{parsed.task || selectedIssue.body}</div>
+
+          <p className="ghw-section-label">activity</p>
+          <div className="ghw-thread">
+            {selectedComments.length === 0
+              ? <p style={{ color: 'var(--ghw-text-faint)', fontSize: 12 }}>no messages yet &mdash; the agent hasn&rsquo;t responded.</p>
+              : selectedComments.map((c, idx) => (
+                <div className={`ghw-msg ${c.user.type === 'Bot' ? 'bot' : 'you'}`} key={idx}>
+                  <div className="ghw-msg-head"><span>{c.user.login}</span><span className="ts">{timeAgo(c.created_at)}</span></div>
+                  {c.body}
                 </div>
-                <button type="button" className="ghw-picker-toggle" onClick={() => setCtxPickerOpen((o) => !o)}>
-                  {ctxPickerOpen ? 'hide file explorer' : 'browse repo files'}
-                </button>
-                {ctxPickerOpen && (
-                  <FileTree tree={fileTree} pickerMode pickedPaths={newIssueContext} onTogglePath={toggleContextPath} />
-                )}
-              </div>
-              <div className="ghw-form-row">
-                <div className="ghw-form-field">
-                  <label>type</label>
-                  <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
-                    <option>Code Writer</option><option>Code Reviewer</option><option>Code Suggester</option>
-                  </select>
-                </div>
-                <div className="ghw-form-field">
-                  <label>priority</label>
-                  <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })}>
-                    <option>Normal</option><option>Immediate</option><option>High</option><option>Low</option>
-                  </select>
-                </div>
-              </div>
-              <button className="ghw-submit-btn" onClick={createIssue}>Create issue</button>
-              <button className="ghw-cancel-link" onClick={() => setSelected(null)}>cancel</button>
-            </>
+              ))}
+          </div>
+          {typingFor === selectedIssue.number && (
+            <div className="ghw-typing">agent[bot] is typing<span className="dot" /><span className="dot" /><span className="dot" /></div>
           )}
 
-          {selectedIssue && (() => {
-            const stage = stageOf(selectedIssue, selectedComments);
-            const parsed = parseAgentBody(selectedIssue.body);
-            const prNum = linkedPrNumber(selectedComments);
-            return (
-              <>
-                <div className="ghw-stage-head">
-                  <div className="num ghw-mono">#{selectedIssue.number}</div>
-                  <h1>{cleanTitle(selectedIssue.title)}</h1>
-                  <div className="ghw-stage-sub">opened {timeAgo(selectedIssue.created_at)} by {selectedIssue.user.login}</div>
-                  <div className="ghw-stage-badges">
-                    <span className={`ghw-chip stage-${stage}`}>{stageLabel(stage)}</span>
-                    <span className={`ghw-chip ${priClass(parsed.priority)}`}>{parsed.priority}</span>
-                    <span className="ghw-chip type">{parsed.type}</span>
-                  </div>
-                </div>
+          <div className="ghw-reply-row">
+            <input
+              value={replyDraft}
+              onChange={(e) => setReplyDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') sendReply(selectedIssue); }}
+              placeholder={stage === 'human' ? 'reply, or use !continue to proceed...' : 'reply...'}
+            />
+            <button onClick={() => sendReply(selectedIssue)}>Send</button>
+          </div>
+          <p className="ghw-reply-hint">use <code>!discuss</code> to ask the agent to revise, <code>!continue</code> to proceed with current direction.</p>
+        </div>
 
-                {stage === 'done' && (
-                  <div className="ghw-banner ok">
-                    <span>PR is ready for this issue.</span>
-                    {prNum && (
-                      <a className="jump" onClick={() => { setActiveNav('prs'); setSelected({ type: 'pr', num: prNum }); }}>
-                        view PR #{prNum} &#8594;
-                      </a>
-                    )}
-                  </div>
-                )}
-
-                <div className="ghw-issue-body">{parsed.task || selectedIssue.body}</div>
-
-                {parsed.context.length > 0 && (
-                  <>
-                    <p className="ghw-section-label">referenced context</p>
-                    <FileTree tree={fileTree} highlightPaths={parsed.context} pickerMode={false} pickedPaths={[]} onTogglePath={() => {}} />
-                  </>
-                )}
-
-                <p className="ghw-section-label">activity</p>
-                <div className="ghw-thread">
-                  {selectedComments.length === 0
-                    ? <p style={{ color: 'var(--ghw-text-faint)', fontSize: 12 }}>no messages yet &mdash; the agent hasn&rsquo;t responded.</p>
-                    : selectedComments.map((c, idx) => (
-                      <div className={`ghw-msg ${c.user.type === 'Bot' ? 'bot' : 'you'}`} key={idx}>
-                        <div className="ghw-msg-head"><span>{c.user.login}</span><span className="ts">{timeAgo(c.created_at)}</span></div>
-                        {c.body}
-                      </div>
-                    ))}
-                </div>
-                {typingFor === selectedIssue.number && (
-                  <div className="ghw-typing">agent[bot] is typing<span className="dot" /><span className="dot" /><span className="dot" /></div>
-                )}
-
-                <div className="ghw-reply-row">
-                  <input
-                    value={replyDraft}
-                    onChange={(e) => setReplyDraft(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') sendReply(selectedIssue); }}
-                    placeholder={stage === 'human' ? 'reply, or use !continue to proceed...' : 'reply...'}
-                  />
-                  <button onClick={() => sendReply(selectedIssue)}>Send</button>
-                </div>
-                <p className="ghw-reply-hint">use <code>!discuss</code> to ask the agent to revise, <code>!continue</code> to proceed with current direction.</p>
-              </>
-            );
-          })()}
-
-          {selectedPr && (
+        <div className="ghw-stage-sidebar">
+          <div className="ghw-section-label">Issue details</div>
+          <div className="ghw-meta-card">
+            <div className="ghw-meta-row"><span>Type</span><b>{parsed.type}</b></div>
+            <div className="ghw-meta-row"><span>Priority</span><b>{parsed.priority}</b></div>
+            <div className="ghw-meta-row"><span>Notify</span><b className="ghw-mono">{parsed.notifyEmail || '\u2014'}</b></div>
+            <div className="ghw-meta-row"><span>Opened by</span><b>{selectedIssue.user.login}</b></div>
+          </div>
+          {parsed.context.length > 0 && (
             <>
-              <div className="ghw-stage-head">
-                <div className="num ghw-mono">#{selectedPr.number}</div>
-                <h1>{selectedPr.title}</h1>
-              </div>
-              {selectedPr.state === 'closed' ? (
-                <div className="ghw-banner" style={{ background: 'var(--ghw-surface-2)', border: '1px solid var(--ghw-line)', color: 'var(--ghw-text-dim)' }}>
-                  this pull request is closed.
-                </div>
-              ) : selectedPr.mergeable ? (
-                <div className="ghw-banner ok">no conflicts &mdash; ready to merge.</div>
-              ) : (
-                <div className="ghw-banner conflict">this branch has conflicts with the base branch.</div>
-              )}
-              <div className="ghw-pr-meta">
-                <span className="ghw-mono">{selectedPr.head.ref}</span> &#8594; <span className="ghw-mono">{selectedPr.base.ref}</span>
-                {' '}&middot; opened by {selectedPr.user.login}{selectedPr.draft ? ' \u00b7 draft' : ''}
-              </div>
-              <p className="ghw-section-label">changed files</p>
-              {selectedPrFiles.map((f) => {
-                const addPct = Math.round((f.additions / maxChange) * 100);
-                const delPct = Math.round((f.deletions / maxChange) * 100);
-                return (
-                  <div className="ghw-diff-row" key={f.filename}>
-                    <span className="fname ghw-mono">{f.filename}</span>
-                    <span className="fstatus">{f.status}</span>
-                    <div className="bar"><div className="add" style={{ width: `${addPct}%` }} /><div className="del" style={{ width: `${delPct}%` }} /></div>
-                    <span className="stat"><span className="a">+{f.additions}</span> <span className="r">-{f.deletions}</span></span>
-                  </div>
-                );
-              })}
-              {selectedPr.state === 'open' && !selectedPr.draft && (
-                <div style={{ marginTop: 16 }}>
-                  <button className={`ghw-ping-btn ${pingedPrs[selectedPr.number] ? 'sent' : ''}`} onClick={() => pingToMerge(selectedPr)}>
-                    {pingedPrs[selectedPr.number] ? 'pinged \u2713' : 'ping to merge'}
-                  </button>
-                </div>
-              )}
+              <div className="ghw-section-label">Context explorer</div>
+              <FileTree tree={fileTree} highlightPaths={parsed.context} pickerMode={false} pickedPaths={[]} onTogglePath={() => {}} />
             </>
           )}
         </div>
+      </div>
+    );
+  })()}
+
+  {selectedPr && (
+    <div className="ghw-stage-workspace">
+      <div className="ghw-stage-main">
+        <div className="ghw-stage-head">
+          <div className="num ghw-mono">#{selectedPr.number}</div>
+          <h1>{selectedPr.title}</h1>
+        </div>
+        {selectedPr.state === 'closed' ? (
+          <div className="ghw-banner" style={{ background: 'var(--ghw-surface-2)', border: '1px solid var(--ghw-line)', color: 'var(--ghw-text-dim)' }}>
+            this pull request is closed.
+          </div>
+        ) : selectedPr.mergeable ? (
+          <div className="ghw-banner ok">no conflicts &mdash; ready to merge.</div>
+        ) : (
+          <div className="ghw-banner conflict">this branch has conflicts with the base branch.</div>
+        )}
+        <div className="ghw-pr-meta">
+          <span className="ghw-mono">{selectedPr.head.ref}</span> &#8594; <span className="ghw-mono">{selectedPr.base.ref}</span>
+          {' '}&middot; opened by {selectedPr.user.login}{selectedPr.draft ? ' \u00b7 draft' : ''}
+        </div>
+        <p className="ghw-section-label">changed files</p>
+        {selectedPrFiles.map((f) => {
+          const addPct = Math.round((f.additions / maxChange) * 100);
+          const delPct = Math.round((f.deletions / maxChange) * 100);
+          return (
+            <div className="ghw-diff-row" key={f.filename}>
+              <span className="fname ghw-mono">{f.filename}</span>
+              <span className="fstatus">{f.status}</span>
+              <div className="bar"><div className="add" style={{ width: `${addPct}%` }} /><div className="del" style={{ width: `${delPct}%` }} /></div>
+              <span className="stat"><span className="a">+{f.additions}</span> <span className="r">-{f.deletions}</span></span>
+            </div>
+          );
+        })}
+        {selectedPr.state === 'open' && !selectedPr.draft && (
+          <div style={{ marginTop: 16 }}>
+            <button className={`ghw-ping-btn ${pingedPrs[selectedPr.number] ? 'sent' : ''}`} onClick={() => pingToMerge(selectedPr)}>
+              {pingedPrs[selectedPr.number] ? 'pinged \u2713' : 'ping to merge'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="ghw-stage-sidebar">
+        <div className="ghw-section-label">Summary</div>
+        <div className="ghw-meta-card">
+          <div className="ghw-meta-row"><span>Files changed</span><b>{selectedPrFiles.length}</b></div>
+          <div className="ghw-meta-row"><span>Additions</span><b style={{ color: 'var(--ghw-green-text)' }}>+{selectedPrFiles.reduce((s, f) => s + f.additions, 0)}</b></div>
+          <div className="ghw-meta-row"><span>Deletions</span><b style={{ color: 'var(--ghw-red-text)' }}>-{selectedPrFiles.reduce((s, f) => s + f.deletions, 0)}</b></div>
+          <div className="ghw-meta-row"><span>Base branch</span><b className="ghw-mono">{selectedPr.base.ref}</b></div>
+        </div>
+      </div>
+    </div>
+  )}
+</div>
       </div>
 
       {toast && <div className="ghw-toast ghw-toast-show"><b>&#8226;</b> {toast}</div>}

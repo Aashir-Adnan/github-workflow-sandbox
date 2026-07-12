@@ -36,8 +36,10 @@
   background: var(--ghw-bg);
   color: var(--ghw-text);
   font-family: 'Inter', -apple-system, sans-serif;
-  font-size: 13.5px;
-  border-radius: 12px;
+  font-size: 14px;
+  border-radius: 0;
+  width: 100%;
+  height: 800px;
   overflow: hidden;
 }
 
@@ -54,10 +56,11 @@
 .ghw-root ::-webkit-scrollbar-track { background: transparent; }
 
 /* --- Unified Main Workspace Layout Grid --- */
-.ghw-shell { display: grid; grid-template-columns: 240px 350px 1fr; height: 780px; }
+.ghw-shell { display: grid; grid-template-columns: 240px 350px 1fr; height: 100%; 
+  width: 100%; }
 
 /* ============ COLUMN 1 : RAIL (LEFT PANEL) ============ */
-.ghw-rail { background: var(--ghw-rail); border-right: 1px solid var(--ghw-line); display: flex; flex-direction: column; padding: 20px 14px; }
+.ghw-rail { background: var(--ghw-rail); border-right: 1px solid var(--ghw-line); display: flex; flex-direction: column; padding: 24px 18px; min-height: 0;}
 .ghw-repo-picker { position: relative; margin-bottom: 24px; }
 .ghw-repo-picker-btn { width: 100%; background: var(--ghw-surface); border: 1px solid var(--ghw-line); color: var(--ghw-text); padding: 10px 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px; text-align: left; }
 .ghw-repo-picker-btn:hover { border-color: var(--ghw-text-faint); background: var(--ghw-surface-2); }
@@ -95,8 +98,8 @@
 .ghw-bell-empty { padding: 24px 14px; color: var(--ghw-text-faint); font-size: 12px; text-align: center; }
 
 /* ============ COLUMN 2 : FEED (MIDDLE LIST PANEL) ============ */
-.ghw-feed { background: var(--ghw-bg); border-right: 1px solid var(--ghw-line); display: flex; flex-direction: column; overflow: hidden; }
-.ghw-feed-head { padding: 20px 16px 12px; border-bottom: 1px solid var(--ghw-line-soft); }
+.ghw-feed { background: var(--ghw-bg); border-right: 1px solid var(--ghw-line); display: flex; flex-direction: column; overflow: hidden; min-height: 0;}
+.ghw-feed-head { padding: 24px 20px 16px; border-bottom: 1px solid var(--ghw-line-soft); }
 .ghw-new-btn { width: 100%; background: var(--ghw-purple); border: none; color: #ffffff; font-weight: 600; font-size: 13px; padding: 10px; border-radius: 8px; margin-bottom: 14px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25); cursor: pointer; }
 .ghw-new-btn:hover { filter: brightness(1.12); transform: translateY(-1px); }
 .ghw-new-btn:active { transform: translateY(0); }
@@ -104,7 +107,7 @@
 .ghw-tab { background: none; border: 1px solid transparent; color: var(--ghw-text-dim); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; white-space: nowrap; cursor: pointer; }
 .ghw-tab:hover { background: var(--ghw-surface); color: var(--ghw-text); }
 .ghw-tab.active { background: var(--ghw-surface-2); border-color: var(--ghw-line); color: var(--ghw-text); }
-.ghw-feed-list { flex: 1; overflow-y: auto; padding: 12px 10px; }
+.ghw-feed-list { flex: 1; overflow-y: auto; padding: 16px 14px; }
 .ghw-feed-empty { color: var(--ghw-text-faint); font-size: 13px; text-align: center; padding: 40px 10px; }
 
 /* --- Nested Cards Inside Feed Column --- */
@@ -131,22 +134,60 @@
 .ghw-chip.pri-normal, .ghw-chip.pri-low { background: var(--ghw-surface); color: var(--ghw-text-dim); border: 1px solid var(--ghw-line); }
 .ghw-chip.type { background: var(--ghw-surface); color: var(--ghw-text-dim); border: 1px solid var(--ghw-line); text-transform: none; }
 .ghw-chip.mine { background: rgba(248, 250, 252, 0.08); color: var(--ghw-text); border: 1px solid var(--ghw-line); }
-
+.ghw-stage { overflow-y: auto; overflow-x: hidden; min-height: 0; }
 /* ============ COLUMN 3 : STAGE (MAIN CONTENT STAGE) ============ */
-.ghw-stage { overflow-y: auto; padding: 32px 40px; background: var(--ghw-bg); }
-.ghw-stage-empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--ghw-text-faint); gap: 8px; }
-.ghw-stage-empty .big { font-size: 15px; font-weight: 500; color: var(--ghw-text-dim); }
+.ghw-stage-empty { height: auto; min-height: 100%; display: block; padding: 40px; text-align: left; color: var(--ghw-text-faint); }
+.ghw-stage-empty .big { font-size: 20px; font-weight: 700; color: var(--ghw-text); margin-bottom: 6px; }
+.ghw-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 28px; }
+.ghw-stat-card { background: var(--ghw-surface); border: 1px solid var(--ghw-line); border-radius: 10px; padding: 18px; }
+.ghw-stat-num { font-size: 26px; font-weight: 700; color: var(--ghw-text); }
+.ghw-stat-label { font-size: 11.5px; color: var(--ghw-text-faint); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
 
 .ghw-stage-head { margin-bottom: 24px; border-bottom: 1px solid var(--ghw-line-soft); padding-bottom: 16px; }
 .ghw-stage-head .num { color: var(--ghw-text-faint); font-size: 13px; font-weight: 600; margin-bottom: 4px; }
 .ghw-stage-head h1 { font-size: 22px; font-weight: 700; margin: 4px 0 8px; color: var(--ghw-text); letter-spacing: -0.4px; }
 .ghw-stage-sub { font-size: 12.5px; color: var(--ghw-text-dim); margin-bottom: 14px; }
 .ghw-stage-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+.ghw-stage-workspace {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) 300px;
+  min-height: 100%;
+}
+.ghw-stage-main {
+  padding: 40px;
+  border-right: 1px solid var(--ghw-line-soft); 
+}
+.ghw-stage-sidebar {
+  padding: 40px 24px;
+  background: rgba(14, 19, 34, 0.2); 
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: stretch !important;
+}
 
-.ghw-section-label { font-size: 11px; font-weight: 700; color: var(--ghw-text-faint); text-transform: uppercase; letter-spacing: 0.8px; margin: 28px 0 10px; }
-
+@media (max-width: 1320px) {
+  .ghw-stage-workspace {
+    grid-template-columns: 1fr;
+  }
+  .ghw-stage-main {
+    border-right: none;
+    border-bottom: 1px solid var(--ghw-line-soft);
+  }
+}
 /* --- Context Explorer File System --- */
-.ghw-tree { background: var(--ghw-surface); border: 1px solid var(--ghw-line); border-radius: 8px; padding: 10px 6px; max-height: 240px; overflow-y: auto; }
+.ghw-tree { background: var(--ghw-surface);
+  border: 1px solid var(--ghw-line); 
+  border-radius: 8px; 
+  padding: 10px 6px; 
+  max-height: 240px; 
+  overflow-y: auto;
+  width: 100%;
+  min-width: 100% !important;
+  max-width: none; /* Add this if a max-width was previously stopping it */
+  box-sizing: border-box;
+scroll-margin-left: 0 !important; /* Ensure it doesn't exceed the container */
+}
 .ghw-tree-row { display: flex; align-items: center; gap: 8px; padding: 5px 12px; font-size: 12.5px; color: var(--ghw-text-dim); }
 .ghw-tree-row.ghw-tree-blob.ghw-tree-hit { color: var(--ghw-purple-text); background: var(--ghw-purple-bg); border-radius: 6px; font-weight: 500; }
 .ghw-tree-icon { width: 14px; text-align: center; color: var(--ghw-text-faint); flex-shrink: 0; }
@@ -229,4 +270,41 @@
 @media (max-width: 960px) {
   .ghw-shell { grid-template-columns: 1fr; height: auto; }
   .ghw-rail, .ghw-feed { border-right: none; border-bottom: 1px solid var(--ghw-line); }
+}
+
+.ghw-meta-card { background: var(--ghw-surface); border: 1px solid var(--ghw-line); border-radius: 10px; padding: 4px 16px; margin-bottom: 20px; width: 100%;max-width: none;box-sizing: border-box; scroll-margin-left: 0 !important; min-width: 100% !important;}
+.ghw-meta-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; font-size: 12.5px; color: var(--ghw-text-dim); border-bottom: 1px solid var(--ghw-line-soft); }
+.ghw-meta-row:last-child { border-bottom: none; }
+.ghw-meta-row b { color: var(--ghw-text); font-weight: 600; }
+
+/* ============ LIGHT MODE OVERRIDES ============ */
+html[data-theme='light'] .ghw-root {
+  --ghw-bg:        #ffffff;
+  --ghw-rail:      #f8fafc;
+  --ghw-surface:   #f8fafc;
+  --ghw-surface-2: #eef2f7;
+  --ghw-line:      #e2e8f0;
+  --ghw-line-soft: #eef1f5;
+
+  --ghw-text:      #0f172a;
+  --ghw-text-dim:  #475569;
+  --ghw-text-faint:#94a3b8;
+
+  --ghw-purple-bg:   rgba(139, 92, 246, 0.10);
+  --ghw-purple-line: rgba(139, 92, 246, 0.30);
+  --ghw-purple-text: #6d28d9;
+
+  --ghw-green-bg:   rgba(16, 185, 129, 0.10);
+  --ghw-green-line: rgba(16, 185, 129, 0.30);
+  --ghw-green-text: #047857;
+
+  --ghw-amber-bg:   rgba(245, 158, 11, 0.12);
+  --ghw-amber-line: rgba(245, 158, 11, 0.30);
+  --ghw-amber-text: #b45309;
+
+  --ghw-red-bg:     rgba(239, 68, 68, 0.10);
+  --ghw-red-line:   rgba(239, 68, 68, 0.30);
+  --ghw-red-text:   #dc2626;
+
+  color-scheme: light;
 }
